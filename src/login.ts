@@ -1,4 +1,6 @@
-// `sm login` 의 동작을 정의한다. AI provider, 모델, 언어, 강도를 묻고, 브라우저로 키 발급 페이지를 열어 키를 등록한다.
+// `sm login` 의 동작을 정의한다. 첫 단계에서 언어를 선택하고, 이후 모든 prompt 가 그 언어로 진행된다.
+// 메시지의 디폴트는 영어이며, 사용자가 한국어를 선택한 경우에만 한국어로 표시된다.
+// AI provider, 모델, 강도, API 키, 글로벌 hook 설치까지 한 흐름으로 묶는다.
 import prompts from "prompts";
 import open from "open";
 import {
@@ -9,6 +11,7 @@ import {
 } from "./config.js";
 import { RECOMMENDED_MODELS } from "./providers/types.js";
 import { runInstallHookGlobal } from "./installHook.js";
+import { t, type Messages } from "./i18n.js";
 
 // provider 별 키 발급 URL. 사용자의 클릭 및 복사 부담을 줄이기 위해 자동으로 페이지를 연다.
 // gemini 는 Google AI Studio 에서 무료로 키를 발급받을 수 있어 카드 등록이 필요 없다.
@@ -22,12 +25,11 @@ const KEY_PAGE_URL: Record<Provider, string> = {
 // prompts 의 'confirm' 타입은 첫 글자를 누르는 즉시 응답이 확정되어 사용자가 의도치 않게
 // 키를 잘못 누르면 그대로 진행되는 문제가 있다. 이 헬퍼는:
 //   - 입력 종료를 항상 'Enter' 키로 강제 (text 타입 사용)
-//   - 빈 입력 (그냥 Enter) → defaultYes 값 (이번 흐름은 true)
+//   - 빈 입력 (그냥 Enter) → defaultYes 값
 //   - y / Y → true,  n / N → false
 //   - 그 외 입력 → 안내 후 동일 질문 재출제 (다음 단계로 넘어가지 않음)
 //   - Ctrl+C 등으로 취소 (응답 자체가 undefined) → null 반환
-async function askYesNo(message: string, defaultYes: boolean): Promise<boolean | null> {
-  // 사용자에게 기본값을 명확히 보여주기 위해 [Y/n] / [y/N] 표기를 메시지에 부착한다.
+async function askYesNo(message: string, defaultYes: boolean, m: Messages): Promise<boolean | null> {
   const hint = defaultYes ? "[Y/n]" : "[y/N]";
   while (true) {
     const { answer } = await prompts({
@@ -36,7 +38,6 @@ async function askYesNo(message: string, defaultYes: boolean): Promise<boolean |
       message: `${message} ${hint}`,
     });
 
-    // Ctrl+C 로 취소된 경우 prompts 는 키 자체가 누락된 객체를 반환한다.
     if (answer === undefined) return null;
 
     const normalized = String(answer).trim();
@@ -45,37 +46,45 @@ async function askYesNo(message: string, defaultYes: boolean): Promise<boolean |
     if (normalized === "y" || normalized === "Y") return true;
     if (normalized === "n" || normalized === "N") return false;
 
-    // 유효하지 않은 입력은 다음 단계로 넘어가지 못하게 동일 질문을 다시 출제한다.
-    console.log("y / Y / n / N 또는 빈 입력(Enter) 만 입력 가능합니다.");
+    console.log(m.askYesNoInvalid);
   }
 }
 
-// 언어 및 강도 선택 흐름은 `sm login` 과 `sm config` 에서 모두 사용하므로 별도 함수로 분리한다.
-// initial 값을 받아 기존 설정이 있으면 해당 값을 기본 선택으로 표시하여 변경 시 UX 를 향상시킨다.
-export async function pickLanguage(initial?: Language): Promise<Language | null> {
+// 언어 선택. 첫 진입 시점에는 사용자가 아직 언어를 고르지 않았으므로 안내문을 영어로 표시한다.
+// sm config 에서 호출되는 경우엔 기존 언어로 표시되도록 lang 인자를 받을 수 있게 분리해 두었다.
+// initial 값을 받으면 sm config 흐름에서 현재 언어가 기본 선택으로 표시된다.
+export async function pickLanguage(
+  initial?: Language,
+  displayLang: Language = "en",
+): Promise<Language | null> {
+  const m = t(displayLang);
   const { language } = await prompts({
     type: "select",
     name: "language",
-    message: "커밋 메시지 출력 언어를 선택합니다.",
+    message: m.chooseLanguagePrompt,
     choices: [
-      { title: "한국어 (ko)", value: "ko" },
-      { title: "English (en)", value: "en" },
+      { title: m.langOptionEn, value: "en" },
+      { title: m.langOptionKo, value: "ko" },
     ],
-    initial: initial === "en" ? 1 : 0,
+    initial: initial === "ko" ? 1 : 0,
   });
   return (language as Language) ?? null;
 }
 
-export async function pickStrength(initial?: Strength): Promise<Strength | null> {
+export async function pickStrength(
+  initial?: Strength,
+  displayLang: Language = "en",
+): Promise<Strength | null> {
+  const m = t(displayLang);
   const idx = initial === "middle" ? 1 : initial === "hard" ? 2 : 0;
   const { strength } = await prompts({
     type: "select",
     name: "strength",
-    message: "메시지 강도를 선택합니다. (길이 및 상세도)",
+    message: m.chooseStrength,
     choices: [
-      { title: "simple — 한 줄 (Conventional Commit)", value: "simple" },
-      { title: "middle — 첫 줄 + 본문 2~5줄", value: "middle" },
-      { title: "hard   — 첫 줄 + README 수준 본문", value: "hard" },
+      { title: m.strengthSimple, value: "simple" },
+      { title: m.strengthMiddle, value: "middle" },
+      { title: m.strengthHard, value: "hard" },
     ],
     initial: idx,
   });
@@ -83,110 +92,99 @@ export async function pickStrength(initial?: Strength): Promise<Strength | null>
 }
 
 export async function runLogin(): Promise<void> {
-  // 1) AI provider 선택. prompts 의 select 타입은 화살표 키로 선택 가능하다.
-  //    Gemini 는 무료 티어가 넉넉하여 기본 권장으로 맨 위에 두고 initial 도 0 으로 지정한다.
-  //    OpenAI / Claude 는 종량제(유료) 임을 사용자가 선택 단계에서 즉시 인지할 수 있도록 라벨에 명시한다.
+  // 1) 언어 선택 — 가장 먼저 묻는다. 디폴트 언어는 영어이며 사용자가 한국어를 고르면
+  //    이후 단계가 한국어로 표시된다. 이 단계의 안내문 자체는 영어로 표시된다.
+  const language = await pickLanguage(undefined, "en");
+  if (!language) {
+    console.log(t("en").cancelled);
+    return;
+  }
+
+  // 이후 모든 prompt 는 사용자가 선택한 언어로 표시된다.
+  const m = t(language);
+
+  // 2) AI provider 선택. Gemini 가 권장 (무료 티어). OpenAI / Claude 는 라벨에 유료 표기.
   const { provider } = await prompts({
     type: "select",
     name: "provider",
-    message: "사용할 AI provider 를 선택합니다.",
+    message: m.chooseProvider,
     choices: [
-      { title: "Google Gemini  — 무료 티어 제공 (권장)", value: "gemini" },
-      { title: "OpenAI (GPT)   — API 사용량 만큼 과금 (유료)", value: "openai" },
-      { title: "Anthropic Claude — API 사용량 만큼 과금 (유료)", value: "claude" },
+      { title: m.providerGeminiLabel, value: "gemini" },
+      { title: m.providerOpenaiLabel, value: "openai" },
+      { title: m.providerClaudeLabel, value: "claude" },
     ],
     initial: 0,
   });
 
-  // 사용자가 Ctrl+C 로 취소한 경우 prompts 는 undefined 를 반환하므로 안전하게 종료한다.
   if (!provider) {
-    console.log("취소되었습니다.");
+    console.log(m.cancelled);
     return;
   }
 
-  // 2) 모델 선택. provider 별 권장 모델은 RECOMMENDED_MODELS 에서 가져온다.
-  //    Gemini 는 권장 모델이 모두 무료 티어 대상이라 안내 문구를 다르게 표시한다.
+  // 3) 모델 선택. provider 별 권장 모델 목록을 그대로 노출.
   const modelMessage =
-    provider === "gemini"
-      ? "모델을 선택합니다. (무료 티어 사용 가능)"
-      : "모델을 선택합니다. (저비용 순)";
+    provider === "gemini" ? m.chooseModelGemini : m.chooseModelDefault;
   const { model } = await prompts({
     type: "select",
     name: "model",
     message: modelMessage,
-    choices: RECOMMENDED_MODELS[provider as Provider].map((m) => ({
-      title: m,
-      value: m,
+    choices: RECOMMENDED_MODELS[provider as Provider].map((name) => ({
+      title: name,
+      value: name,
     })),
     initial: 0,
   });
 
   if (!model) {
-    console.log("취소되었습니다.");
+    console.log(m.cancelled);
     return;
   }
 
-  // 3) 언어 및 강도 선택. 키 발급 단계 이전에 모든 옵션을 결정해 둔다.
-  const language = await pickLanguage();
-  if (!language) {
-    console.log("취소되었습니다.");
-    return;
-  }
-  const strength = await pickStrength();
+  // 4) 메시지 강도 선택. (언어는 1단계에서 이미 결정)
+  const strength = await pickStrength(undefined, language);
   if (!strength) {
-    console.log("취소되었습니다.");
+    console.log(m.cancelled);
     return;
   }
 
-  // 4) 브라우저에서 API 키 발급 페이지를 자동으로 연다. 자동 오픈에 실패한 경우 URL 을 안내한다.
-  //    OpenAI / Claude 는 API 가 종량제이므로 키 발급 직전에 한 번 더 비용 발생 사실을 안내한다.
-  //    ChatGPT Plus / Claude Max 등 구독 결제와는 별개의 결제 체계임을 사용자가 혼동하지 않게 한다.
+  // 5) 유료 provider 의 경우 결제 안내 한 번 더. ChatGPT Plus / Claude Max 구독과의 혼동 방지.
   if (provider === "openai" || provider === "claude") {
     const label = provider === "openai" ? "OpenAI" : "Anthropic Claude";
     console.log("");
-    console.log(`[안내] ${label} API 는 사용량 기반 종량제입니다.`);
-    console.log("       ChatGPT Plus / Claude Max 등의 구독 결제로는 API 호출이 동작하지 않으며,");
-    console.log("       콘솔에서 별도로 카드 등록 또는 크레딧 충전이 필요합니다.");
-    console.log("       무료로 사용하시려면 'Google Gemini' 를 선택하시기 바랍니다.");
+    console.log(m.paidNoticeLine1(label));
+    console.log(m.paidNoticeLine2);
+    console.log(m.paidNoticeLine3);
+    console.log(m.paidNoticeLine4);
   }
 
+  // 6) 키 발급 페이지 자동 오픈.
   const url = KEY_PAGE_URL[provider as Provider];
-  console.log(`\n브라우저에서 API 키 발급 페이지를 엽니다: ${url}`);
+  console.log(m.openingBrowser(url));
   try {
     await open(url);
   } catch {
-    console.log("(브라우저 자동 오픈에 실패하였습니다. 위 URL 을 직접 열어주시기 바랍니다.)");
+    console.log(m.browserOpenFailed);
   }
 
-  // 5) 키 입력을 받는다.
-  //    의도적으로 'text' 타입을 사용해 입력값을 화면에 그대로 표시한다.
-  //    이전에는 invisible/password 로 가렸으나 다음 두 문제가 더 컸다:
-  //      - invisible: 붙여넣기 후 입력이 들어갔는지 사용자가 시각적으로 확인할 방법이 없음.
-  //      - password : 키가 100자가 넘는 Anthropic 키처럼 길어지면 별표가 터미널 폭을 넘어 줄바꿈 발생.
-  //    이 도구의 사용 맥락(개인 개발자가 자기 PC에서 본인 키를 등록) 에서는 어깨너머 노출 위험이
-  //    "키가 제대로 들어갔는지 못 보는 답답함" 보다 작다고 판단하여 text 로 전환한다.
-  //    혹시 모를 노출에 대비해 입력 직전 한 줄 안내를 띄운다.
+  // 7) 키 입력. text 타입(평문 표시) 으로 사용자가 붙여넣기 결과를 시각적으로 확인 가능.
+  //    붙여넣기 시 끝에 따라붙는 개행/공백은 trim 으로 제거 (인증 헤더 깨짐 방지).
   console.log("");
-  console.log("(보안 안내) 입력하신 키가 화면에 그대로 표시됩니다. 주변에 사람이 있으면 화면을 잠시 가려주세요.");
+  console.log(m.securityNotice);
 
   const { apiKey } = await prompts({
     type: "text",
     name: "apiKey",
-    message: "발급된 API 키를 입력합니다.",
+    message: m.enterApiKey,
   });
 
-  // 붙여넣기 시 종종 끝에 개행/공백이 따라붙는데 그대로 저장하면 인증 헤더에서 키가 깨져
-  // 401 같은 모호한 오류가 나온다. trim 으로 안전하게 정리한다.
   const trimmedKey = typeof apiKey === "string" ? apiKey.trim() : "";
 
   if (!trimmedKey) {
-    console.log("키가 입력되지 않아 취소되었습니다.");
+    console.log(m.keyEmptyCancelled);
     return;
   }
 
-  // 6) config 에 저장한다. provider 별 키 필드를 분기하여 다른 provider 의 키는 보존한다.
-  //    동일한 사용자가 Gemini / OpenAI / Claude 키를 모두 등록해두고 `sm config` 에서 전환할 수 있게
-  //    각 키는 독립적으로 보관한다.
+  // 8) config 저장. provider 별 키 필드는 독립적으로 보관해 다른 provider 키를 보존한다.
   const baseFields = { provider, model, language, strength };
   const patch =
     provider === "gemini"
@@ -197,34 +195,31 @@ export async function runLogin(): Promise<void> {
 
   await updateConfig(patch);
 
-  console.log(`\n계정 설정이 완료되었습니다.`);
+  console.log(m.loginCompleted);
 
-  // 7) 글로벌 hook 자동 설치. 한 번만 동의받으면 모든 git 저장소에서 자동으로 동작한다.
-  //    사용자가 매 프로젝트마다 install-hook 을 수동 실행할 필요가 없어진다.
+  // 9) 글로벌 hook 자동 설치. 엔터 강제 + y/n 검증 루프(askYesNo) 로 사고 방지.
   console.log("");
-  console.log("이제 모든 git 저장소에서 'git commit' 만으로 자동 메시지 생성을 사용할 수 있도록");
-  console.log("글로벌 git hook 을 설치합니다. 이 설정은 사용자 환경 전체에 한 번만 적용됩니다.");
-  // askYesNo 헬퍼를 사용해 엔터를 명시적으로 눌러야만 다음 단계로 넘어가게 한다.
-  // 잘못된 키를 한 번 눌렀다고 hook 설치가 자동 진행되거나 건너뛰어지는 사고를 방지한다.
-  const wantGlobal = await askYesNo("글로벌 hook 을 설치하시겠습니까?", true);
+  console.log(m.globalHookIntro1);
+  console.log(m.globalHookIntro2);
+  const wantGlobal = await askYesNo(m.globalHookConfirm, true, m);
 
   if (wantGlobal === null) {
-    console.log("취소되었습니다.");
+    console.log(m.cancelled);
     return;
   }
 
   if (wantGlobal) {
     const installed = await runInstallHookGlobal();
     if (installed) {
-      console.log("\n설치가 완료되었습니다. 어떤 git 저장소에서든 다음 명령만으로 자동 메시지가 생성됩니다.");
+      console.log(m.globalHookInstalled);
       console.log("");
       console.log("  git add .");
       console.log("  git commit");
       console.log("");
-      console.log("설정 변경은 `sm config` 명령으로 수행합니다.");
+      console.log(m.globalHookInstalledHint);
     }
   } else {
-    console.log("\n글로벌 hook 설치를 건너뛰었습니다.");
-    console.log("명령줄에서 `sm c` 로 사용하시거나, 추후 `sm login` 을 다시 실행하여 설정할 수 있습니다.");
+    console.log(m.globalHookSkipped);
+    console.log(m.globalHookSkippedTip);
   }
 }

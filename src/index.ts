@@ -14,6 +14,8 @@ import { runLogout, runUninstall } from "./uninstall.js";
 import { runInstallHook, runHookHandler } from "./installHook.js";
 import { runConfig } from "./configCmd.js";
 import { runCompletion } from "./completion.js";
+import { runUpdate } from "./update.js";
+import { fetchLatestVersion, compareSemver } from "./version.js";
 import { loadConfig, getConfigPath } from "./config.js";
 
 // `sm --version` 출력값을 package.json 의 version 과 자동 동기화한다.
@@ -82,22 +84,46 @@ program
     await runCompletion(shell);
   });
 
-// `sm status` — 현재 저장된 설정을 출력한다.
+// `sm status` — 현재 저장된 설정과 버전 정보를 출력한다.
+// 버전 비교는 npm registry 에 query 를 보내므로 네트워크가 끊겨있어도 본 출력 자체는 깨지지 않게 처리한다.
 program
   .command("status")
-  .description("현재 저장된 설정을 출력합니다.")
+  .description("현재 저장된 설정과 버전(현재/최신) 을 출력합니다.")
   .action(async () => {
     const cfg = await loadConfig();
-    if (!cfg) {
-      console.log("로그인이 되어있지 않습니다. `sm login` 을 실행하시기 바랍니다.");
+    const current = pkg.version;
+
+    // 설정 부분 — 로그인 안 한 경우 안내. 단, 버전 정보는 그래도 표시한다.
+    if (cfg) {
+      console.log(`provider : ${cfg.provider}`);
+      console.log(`model    : ${cfg.model}`);
+      console.log(`language : ${cfg.language ?? "(not set)"}`);
+      console.log(`strength : ${cfg.strength ?? "(not set)"}`);
+      console.log(`config   : ${getConfigPath()}`);
+    } else {
+      console.log("Not logged in. Run `sm login` to set up.");
+    }
+
+    // 최신 버전 조회. 네트워크 실패 시 latest 만 '?' 로 표기하고 본 명령은 정상 종료한다.
+    const latest = await fetchLatestVersion();
+    if (!latest) {
+      console.log(`version  : ${current} (latest: unknown — network unavailable)`);
       return;
     }
-    console.log(`provider : ${cfg.provider}`);
-    console.log(`model    : ${cfg.model}`);
-    console.log(`language : ${cfg.language ?? "(설정되지 않음)"}`);
-    console.log(`strength : ${cfg.strength ?? "(설정되지 않음)"}`);
-    console.log(`config   : ${getConfigPath()}`);
+
+    const cmp = compareSemver(current, latest);
+    if (cmp >= 0) {
+      console.log(`version  : ${current} (latest: ${latest}, up to date)`);
+    } else {
+      console.log(`version  : ${current} → latest ${latest}  ⇣  run \`sm update\` to upgrade`);
+    }
   });
+
+// `sm update` — npm install -g smart-msg@latest 를 자식 프로세스로 실행해 자체 업데이트한다.
+program
+  .command("update")
+  .description("smart-msg 를 npm registry 의 최신 버전으로 업데이트합니다.")
+  .action(runUpdate);
 
 // `sm commit` (또는 `sm c`) — staged diff 를 기반으로 메시지를 생성하고 커밋한다.
 program
