@@ -17,6 +17,7 @@ import { runCompletion } from "./completion.js";
 import { runUpdate } from "./update.js";
 import { fetchLatestVersion, compareSemver } from "./version.js";
 import { loadConfig, getConfigPath } from "./config.js";
+import { askYesNo } from "./cliPrompt.js";
 
 // `sm --version` 출력값을 package.json 의 version 과 자동 동기화한다.
 // 과거 .version("0.1.0") 처럼 하드코딩하면 npm version 으로 버전을 올려도 CLI 출력이 안 바뀌어
@@ -152,15 +153,14 @@ program
     console.log(message);
 
     // 3) 바로 커밋하지 않고 사용자에게 한 번 더 확인한다.
-    const answer = await prompts({
-      type: "confirm",
-      name: "ok",
-      message: "이 메시지로 커밋을 진행하시겠습니까?",
-      initial: true,
-    });
+    //    엔터를 명시적으로 눌러야만 진행 (askYesNo). 빈 입력 = 기본값 Y.
+    //    prompts 의 confirm 타입은 키 한 글자에 즉시 진행되어 잘못 누른 키로 commit 되는 사고가 가능했음.
+    const cfg = await loadConfig();
+    const lang = cfg?.language ?? "en";
+    const ok = await askYesNo("이 메시지로 커밋을 진행하시겠습니까?", true, lang);
 
-    if (!answer.ok) {
-      console.log("취소되었습니다.");
+    if (ok !== true) {
+      console.log(lang === "ko" ? "취소되었습니다." : "Cancelled.");
       return;
     }
 

@@ -11,7 +11,8 @@ import {
 } from "./config.js";
 import { RECOMMENDED_MODELS } from "./providers/types.js";
 import { runInstallHookGlobal } from "./installHook.js";
-import { t, type Messages } from "./i18n.js";
+import { t } from "./i18n.js";
+import { askYesNo } from "./cliPrompt.js";
 
 // provider 별 키 발급 URL. 사용자의 클릭 및 복사 부담을 줄이기 위해 자동으로 페이지를 연다.
 // gemini 는 Google AI Studio 에서 무료로 키를 발급받을 수 있어 카드 등록이 필요 없다.
@@ -21,38 +22,14 @@ const KEY_PAGE_URL: Record<Provider, string> = {
   claude: "https://console.anthropic.com/settings/keys",
 };
 
-// y/Y/n/N/빈입력만 허용하는 엄격한 yes-no 프롬프트.
-// prompts 의 'confirm' 타입은 첫 글자를 누르는 즉시 응답이 확정되어 사용자가 의도치 않게
-// 키를 잘못 누르면 그대로 진행되는 문제가 있다. 이 헬퍼는:
-//   - 입력 종료를 항상 'Enter' 키로 강제 (text 타입 사용)
-//   - 빈 입력 (그냥 Enter) → defaultYes 값
-//   - y / Y → true,  n / N → false
-//   - 그 외 입력 → 안내 후 동일 질문 재출제 (다음 단계로 넘어가지 않음)
-//   - Ctrl+C 등으로 취소 (응답 자체가 undefined) → null 반환
-async function askYesNo(message: string, defaultYes: boolean, m: Messages): Promise<boolean | null> {
-  const hint = defaultYes ? "[Y/n]" : "[y/N]";
-  while (true) {
-    const { answer } = await prompts({
-      type: "text",
-      name: "answer",
-      message: `${message} ${hint}`,
-    });
-
-    if (answer === undefined) return null;
-
-    const normalized = String(answer).trim();
-
-    if (normalized === "") return defaultYes;
-    if (normalized === "y" || normalized === "Y") return true;
-    if (normalized === "n" || normalized === "N") return false;
-
-    console.log(m.askYesNoInvalid);
-  }
+// title 옆에 (현재 설정) 마커를 부착하는 작은 헬퍼. initial 이 있는 경우 (sm config 등) 만 사용.
+function withMarker(title: string, isCurrent: boolean, marker: string): string {
+  return isCurrent ? `${title}${marker}` : title;
 }
 
 // 언어 선택. 첫 진입 시점에는 사용자가 아직 언어를 고르지 않았으므로 안내문을 영어로 표시한다.
 // sm config 에서 호출되는 경우엔 기존 언어로 표시되도록 lang 인자를 받을 수 있게 분리해 두었다.
-// initial 값을 받으면 sm config 흐름에서 현재 언어가 기본 선택으로 표시된다.
+// initial 값을 받으면 sm config 흐름에서 현재 언어가 기본 선택 + (현재 설정) 마커로 표시된다.
 export async function pickLanguage(
   initial?: Language,
   displayLang: Language = "en",
@@ -63,8 +40,8 @@ export async function pickLanguage(
     name: "language",
     message: m.chooseLanguagePrompt,
     choices: [
-      { title: m.langOptionEn, value: "en" },
-      { title: m.langOptionKo, value: "ko" },
+      { title: withMarker(m.langOptionEn, initial === "en", m.currentMarker), value: "en" },
+      { title: withMarker(m.langOptionKo, initial === "ko", m.currentMarker), value: "ko" },
     ],
     initial: initial === "ko" ? 1 : 0,
   });
@@ -82,9 +59,9 @@ export async function pickStrength(
     name: "strength",
     message: m.chooseStrength,
     choices: [
-      { title: m.strengthSimple, value: "simple" },
-      { title: m.strengthMiddle, value: "middle" },
-      { title: m.strengthHard, value: "hard" },
+      { title: withMarker(m.strengthSimple, initial === "simple", m.currentMarker), value: "simple" },
+      { title: withMarker(m.strengthMiddle, initial === "middle", m.currentMarker), value: "middle" },
+      { title: withMarker(m.strengthHard, initial === "hard", m.currentMarker), value: "hard" },
     ],
     initial: idx,
   });
@@ -201,7 +178,7 @@ export async function runLogin(): Promise<void> {
   console.log("");
   console.log(m.globalHookIntro1);
   console.log(m.globalHookIntro2);
-  const wantGlobal = await askYesNo(m.globalHookConfirm, true, m);
+  const wantGlobal = await askYesNo(m.globalHookConfirm, true, language);
 
   if (wantGlobal === null) {
     console.log(m.cancelled);

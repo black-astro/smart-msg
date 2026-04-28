@@ -78,6 +78,9 @@ export interface Messages {
   // hook 실패 안내 (msgFile 코멘트 + stderr).
   hookFailureCommentIntro: string;
   hookFailureCommentCause: (cause: string) => string;
+
+  // 선택 메뉴에서 현재 설정값 옆에 붙이는 마커.
+  currentMarker: string;
 }
 
 const en: Messages = {
@@ -147,6 +150,8 @@ const en: Messages = {
 
   hookFailureCommentIntro: "smart-msg: AI message generation failed. Write manually here, or run `sm c` to retry.",
   hookFailureCommentCause: (cause) => `cause: ${cause}`,
+
+  currentMarker: "  ★ (current)",
 };
 
 const ko: Messages = {
@@ -216,6 +221,8 @@ const ko: Messages = {
 
   hookFailureCommentIntro: "smart-msg: AI 메시지 자동 생성에 실패했습니다. 여기에 직접 작성하시거나 'sm c' 로 다시 시도하시기 바랍니다.",
   hookFailureCommentCause: (cause) => `원인: ${cause}`,
+
+  currentMarker: "  ★ (현재 설정)",
 };
 
 // 외부 사용 진입점. cfg.language 가 비어있는 경우 (sm login 의 첫 단계 등) 에는 호출자가 "en" 을 명시한다.

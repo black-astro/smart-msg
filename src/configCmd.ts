@@ -65,16 +65,16 @@ export async function runConfig(): Promise<void> {
   }
 
   if (target === "onFailure") {
-    const currentIdx = cfg.onFailure === "abort" ? 1 : 0;
+    const current: OnFailure = cfg.onFailure ?? "fallback";
     const { onFailure } = await prompts({
       type: "select",
       name: "onFailure",
       message: m.configChooseOnFailure,
       choices: [
-        { title: m.onFailureFallback, value: "fallback" },
-        { title: m.onFailureAbort, value: "abort" },
+        { title: current === "fallback" ? `${m.onFailureFallback}${m.currentMarker}` : m.onFailureFallback, value: "fallback" },
+        { title: current === "abort"    ? `${m.onFailureAbort}${m.currentMarker}`    : m.onFailureAbort,    value: "abort"    },
       ],
-      initial: currentIdx,
+      initial: current === "abort" ? 1 : 0,
     });
     if (!onFailure) return;
     await updateConfig({ onFailure: onFailure as OnFailure });
@@ -88,7 +88,7 @@ export async function runConfig(): Promise<void> {
       name: "model",
       message: m.configChooseModelOf(cfg.provider),
       choices: RECOMMENDED_MODELS[cfg.provider].map((name) => ({
-        title: name,
+        title: name === cfg.model ? `${name}${m.currentMarker}` : name,
         value: name,
       })),
       initial: Math.max(0, RECOMMENDED_MODELS[cfg.provider].indexOf(cfg.model)),

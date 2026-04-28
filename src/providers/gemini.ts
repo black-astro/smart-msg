@@ -13,8 +13,11 @@ export const geminiProvider: CommitProvider = {
 
   async generate({ diff, model, apiKey, language, strength }) {
     // 강도별 출력 토큰 한도. simple 은 짧으니 한도도 작게 → 비용/시간 모두 절감.
-    const maxOutputTokens =
-      strength === "simple" ? 120 : strength === "middle" ? 400 : 800;
+    // 한국어는 영어 대비 토큰 효율이 낮아 동일 줄 수에서 토큰을 더 많이 소모하므로,
+    // 본문이 잘려 첫 줄만 남는 사고를 막기 위해 ko 일 때 50% 가량 여유를 더한다.
+    const baseTokens =
+      strength === "simple" ? 120 : strength === "middle" ? 500 : 1000;
+    const maxOutputTokens = language === "ko" ? Math.round(baseTokens * 1.5) : baseTokens;
 
     const url = `${GEMINI_API_BASE}/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
