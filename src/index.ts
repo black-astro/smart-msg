@@ -2,6 +2,9 @@
 // CLI 진입점. npm install -g 로 설치 시 `sm` 명령을 어디에서나 호출 가능.
 
 import "dotenv/config";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { Command } from "commander";
 import prompts from "prompts";
 import { getStagedDiff, commit } from "./git.js";
@@ -12,13 +15,22 @@ import { runInstallHook, runHookHandler } from "./installHook.js";
 import { runConfig } from "./configCmd.js";
 import { loadConfig, getConfigPath } from "./config.js";
 
+// `sm --version` 출력값을 package.json 의 version 과 자동 동기화한다.
+// 과거 .version("0.1.0") 처럼 하드코딩하면 npm version 으로 버전을 올려도 CLI 출력이 안 바뀌어
+// 사용자 입장에서 업데이트 적용 여부를 확인할 수 없는 문제가 있었기에 동기화로 전환한다.
+// 빌드 결과는 dist/index.js 이고 패키지 루트의 package.json 을 가리키므로 ../package.json 으로 접근.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(
+  readFileSync(join(__dirname, "../package.json"), "utf-8"),
+) as { version: string };
+
 // commander 로 서브커맨드 구조를 구성한다. 새로운 명령은 이 파일에 한 줄 추가하여 확장한다.
 const program = new Command();
 
 program
   .name("sm")
   .description("staged 된 git diff 를 분석하여 커밋 메시지를 생성하는 CLI 도구입니다.")
-  .version("0.1.0");
+  .version(pkg.version);
 
 // `sm login` — AI provider, 모델, 언어, 강도, API 키를 처음 등록한다.
 program
