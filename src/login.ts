@@ -18,6 +18,38 @@ const KEY_PAGE_URL: Record<Provider, string> = {
   claude: "https://console.anthropic.com/settings/keys",
 };
 
+// y/Y/n/N/빈입력만 허용하는 엄격한 yes-no 프롬프트.
+// prompts 의 'confirm' 타입은 첫 글자를 누르는 즉시 응답이 확정되어 사용자가 의도치 않게
+// 키를 잘못 누르면 그대로 진행되는 문제가 있다. 이 헬퍼는:
+//   - 입력 종료를 항상 'Enter' 키로 강제 (text 타입 사용)
+//   - 빈 입력 (그냥 Enter) → defaultYes 값 (이번 흐름은 true)
+//   - y / Y → true,  n / N → false
+//   - 그 외 입력 → 안내 후 동일 질문 재출제 (다음 단계로 넘어가지 않음)
+//   - Ctrl+C 등으로 취소 (응답 자체가 undefined) → null 반환
+async function askYesNo(message: string, defaultYes: boolean): Promise<boolean | null> {
+  // 사용자에게 기본값을 명확히 보여주기 위해 [Y/n] / [y/N] 표기를 메시지에 부착한다.
+  const hint = defaultYes ? "[Y/n]" : "[y/N]";
+  while (true) {
+    const { answer } = await prompts({
+      type: "text",
+      name: "answer",
+      message: `${message} ${hint}`,
+    });
+
+    // Ctrl+C 로 취소된 경우 prompts 는 키 자체가 누락된 객체를 반환한다.
+    if (answer === undefined) return null;
+
+    const normalized = String(answer).trim();
+
+    if (normalized === "") return defaultYes;
+    if (normalized === "y" || normalized === "Y") return true;
+    if (normalized === "n" || normalized === "N") return false;
+
+    // 유효하지 않은 입력은 다음 단계로 넘어가지 못하게 동일 질문을 다시 출제한다.
+    console.log("y / Y / n / N 또는 빈 입력(Enter) 만 입력 가능합니다.");
+  }
+}
+
 // 언어 및 강도 선택 흐름은 `sm login` 과 `sm config` 에서 모두 사용하므로 별도 함수로 분리한다.
 // initial 값을 받아 기존 설정이 있으면 해당 값을 기본 선택으로 표시하여 변경 시 UX 를 향상시킨다.
 export async function pickLanguage(initial?: Language): Promise<Language | null> {
@@ -126,9 +158,12 @@ export async function runLogin(): Promise<void> {
     console.log("(브라우저 자동 오픈에 실패하였습니다. 위 URL 을 직접 열어주시기 바랍니다.)");
   }
 
-  // 5) 키 입력을 받는다. password 타입은 입력 시 화면에 노출되지 않으므로 어깨너머 노출을 방지한다.
+  // 5) 키 입력을 받는다. 'invisible' 타입은 입력값을 화면에 일절 표시하지 않는다.
+  //    'password' 는 별표 마스킹을 하는데, 키가 100자가 넘는 Anthropic 키처럼 길어지면
+  //    별표가 터미널 너비를 초과해 줄바꿈이 발생, 화면이 어수선해지는 문제가 있어 invisible 로 전환한다.
+  //    어깨너머 노출 방지 효과는 동일하다.
   const { apiKey } = await prompts({
-    type: "password",
+    type: "invisible",
     name: "apiKey",
     message: "발급된 API 키를 입력합니다.",
   });
@@ -158,12 +193,14 @@ export async function runLogin(): Promise<void> {
   console.log("");
   console.log("이제 모든 git 저장소에서 'git commit' 만으로 자동 메시지 생성을 사용할 수 있도록");
   console.log("글로벌 git hook 을 설치합니다. 이 설정은 사용자 환경 전체에 한 번만 적용됩니다.");
-  const { wantGlobal } = await prompts({
-    type: "confirm",
-    name: "wantGlobal",
-    message: "글로벌 hook 을 설치하시겠습니까?",
-    initial: true,
-  });
+  // askYesNo 헬퍼를 사용해 엔터를 명시적으로 눌러야만 다음 단계로 넘어가게 한다.
+  // 잘못된 키를 한 번 눌렀다고 hook 설치가 자동 진행되거나 건너뛰어지는 사고를 방지한다.
+  const wantGlobal = await askYesNo("글로벌 hook 을 설치하시겠습니까?", true);
+
+  if (wantGlobal === null) {
+    console.log("취소되었습니다.");
+    return;
+  }
 
   if (wantGlobal) {
     const installed = await runInstallHookGlobal();
