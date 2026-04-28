@@ -1,6 +1,6 @@
 {
   "name": "smart-msg",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "AI git commit message generator (OpenAI / Claude)",
   "type": "module",
   "bin": {
