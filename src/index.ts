@@ -13,6 +13,7 @@ import { runLogin } from "./login.js";
 import { runLogout, runUninstall } from "./uninstall.js";
 import { runInstallHook, runHookHandler } from "./installHook.js";
 import { runConfig } from "./configCmd.js";
+import { runCompletion } from "./completion.js";
 import { loadConfig, getConfigPath } from "./config.js";
 
 // `sm --version` 출력값을 package.json 의 version 과 자동 동기화한다.
@@ -70,6 +71,15 @@ program
   .description("(internal) prepare-commit-msg hook 핸들러입니다.")
   .action(async (msgFile: string, source?: string) => {
     await runHookHandler(msgFile, source);
+  });
+
+// `sm completion <shell>` — 셸 자동완성 등록 스크립트를 출력한다.
+// gh / kubectl / npm 등이 채택한 표준 패턴으로, 사용자가 출력을 자기 셸 rc 파일에 source 한다.
+program
+  .command("completion [shell]")
+  .description("셸 자동완성 등록 스크립트를 출력합니다. (bash, zsh, powershell, clink)")
+  .action(async (shell?: string) => {
+    await runCompletion(shell);
   });
 
 // `sm status` — 현재 저장된 설정을 출력한다.
