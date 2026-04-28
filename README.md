@@ -158,6 +158,7 @@ feat(auth): add OAuth login flow
 | `sm logout`                 | 저장된 API 키 제거                                       |
 | `sm uninstall`              | 모든 설정 및 hook 제거                                    |
 | `sm completion <shell>`     | 셸 자동완성 등록 스크립트 출력 (bash/zsh/powershell/clink)        |
+| `sm help [command]`         | 도움말 출력. 특정 명령을 인자로 주면 그 명령의 상세 도움말 (예: `sm help commit`) |
 
 <br>
 
