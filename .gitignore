@@ -11,6 +11,11 @@ dist/
 *.key
 *.pem
 
+# Internal notes — 외부 공개되지 않는 개발/배포용 메모
+INTERNAL.txt
+INTERNAL.md
+NOTES.local.*
+
 # IDE / editor
 .idea/
 .vscode/

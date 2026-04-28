@@ -15,13 +15,13 @@ export async function generateCommitMessage(diff: string): Promise<string> {
   // 1) config 없으면 사용자가 아직 로그인 안 한 것 → 친절한 안내 후 종료.
   const config = await loadConfig();
   if (!config) {
-    throw new Error("로그인이 필요합니다. `sm login` 을 먼저 실행하세요.");
+    throw new Error("로그인이 필요합니다. `sm login` 을 먼저 실행하시기 바랍니다.");
   }
 
   // 2) provider 객체 가져오기. 알 수 없는 값이면 config 손상 의심 → 명시적으로 에러.
   const provider = PROVIDERS[config.provider];
   if (!provider) {
-    throw new Error(`알 수 없는 provider: ${config.provider}`);
+    throw new Error(`알 수 없는 provider 입니다: ${config.provider}`);
   }
 
   // 3) provider 별로 키가 따로 저장되어 있음. 해당 provider 키만 꺼내서 전달.
@@ -29,7 +29,7 @@ export async function generateCommitMessage(diff: string): Promise<string> {
     config.provider === "openai" ? config.openaiApiKey : config.claudeApiKey;
   if (!apiKey) {
     throw new Error(
-      `${config.provider} API 키가 없습니다. \`sm login\` 으로 다시 로그인하세요.`,
+      `${config.provider} API 키가 없습니다. \`sm login\` 명령으로 다시 로그인하시기 바랍니다.`,
     );
   }
 

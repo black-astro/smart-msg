@@ -27,7 +27,7 @@ export async function runInstallHook(): Promise<void> {
 
   // 1) 현재 폴더가 git repo 인지 확인. 아니면 일찍 종료.
   if (!existsSync(gitDir)) {
-    console.error("git 저장소가 아닙니다. 프로젝트 루트에서 실행하세요.");
+    console.error("git 저장소가 아닙니다. 프로젝트 루트에서 실행하시기 바랍니다.");
     process.exit(1);
   }
 
@@ -49,15 +49,15 @@ export async function runInstallHook(): Promise<void> {
     const { ok } = await prompts({
       type: "confirm",
       name: "ok",
-      message: `이미 ${HOOK_NAME} hook 이 있습니다. 백업(.bak)하고 덮어쓸까요?`,
+      message: `기존 ${HOOK_NAME} hook 이 존재합니다. 백업(.bak) 후 덮어쓰시겠습니까?`,
       initial: false,
     });
     if (!ok) {
-      console.log("취소됨");
+      console.log("취소되었습니다.");
       return;
     }
     await writeFile(`${hookPath}.bak`, existing, "utf-8");
-    console.log(`기존 hook 백업됨: ${hookPath}.bak`);
+    console.log(`기존 hook 을 백업하였습니다: ${hookPath}.bak`);
   }
 
   // 3) hook 파일 쓰기 + 실행 권한. Windows 에선 chmod 가 사실상 무시됨.
@@ -71,11 +71,11 @@ export async function runInstallHook(): Promise<void> {
   // 4) config 에 경로 기록 → 나중에 `sm uninstall` 이 자동 정리 가능.
   await rememberHook(hookPath);
 
-  console.log(`설치 완료: ${hookPath}`);
+  console.log(`설치가 완료되었습니다: ${hookPath}`);
   console.log(
-    "이제 'git commit' (또는 IntelliJ 커밋 창)만으로 메시지가 자동 채워집니다."
+    "이후 'git commit' 명령 또는 IntelliJ 커밋 창에서 메시지가 자동으로 채워집니다."
   );
-  console.log("'git commit -m \"...\"' 으로 직접 메시지 줄 땐 hook 이 비켜섭니다.");
+  console.log("'git commit -m \"...\"' 형식으로 메시지를 직접 지정하는 경우 hook 은 동작하지 않습니다.");
 }
 
 // hook 경로를 config 에 누적 기록. 중복 방지 + uninstall 시 일괄 정리용.
