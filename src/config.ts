@@ -18,6 +18,13 @@ export type Language = "ko" | "en";
 //   hard  : 첫 줄 + 본문 (간단한 README 수준 — 동기/변경점/영향)
 export type Strength = "simple" | "middle" | "hard";
 
+// AI 호출 실패 시 hook 의 동작.
+//   fallback: 안내 코멘트가 담긴 빈 메시지 템플릿을 적어 git 에디터가 열리고 사용자가 직접 작성 (기본)
+//   abort   : 메시지를 비워둬 git 이 'empty commit message' 로 commit 을 취소
+// hook 컨텍스트(특히 IDE) 에서는 인터랙티브 prompt 가 신뢰성 부족하므로
+// 매번 묻지 않고 사용자가 미리 선택해두는 방식을 채택한다.
+export type OnFailure = "fallback" | "abort";
+
 // config 파일에 저장되는 전체 형태. 키는 provider 별로 따로 들고 있음
 // → 사용자가 둘 다 로그인해두고 provider 만 바꿔서 쓸 수 있게.
 export interface Config {
@@ -28,6 +35,8 @@ export interface Config {
   geminiApiKey?: string;
   openaiApiKey?: string;
   claudeApiKey?: string;
+  // AI 호출 실패 시 hook 의 동작. 미설정 시 'fallback' (안전한 기본값).
+  onFailure?: OnFailure;
   // 프로젝트 단위로 깔아준 git hook 경로 목록. uninstall 시 자동 제거하려고 추적.
   installedHooks?: string[];
   // 글로벌 hook (core.hooksPath) 설치 여부. uninstall 시 정리 대상 식별용.

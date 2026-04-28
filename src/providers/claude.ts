@@ -3,6 +3,7 @@
 // 추후 @anthropic-ai/sdk 도입 시 이 파일만 교체하면 router 는 변경 없음.
 import type { CommitProvider } from "./types.js";
 import { buildPrompt } from "./prompt.js";
+import { fetchWithRetry } from "./_retry.js";
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -14,21 +15,28 @@ export const claudeProvider: CommitProvider = {
     // 강도별 max_tokens 조정 → simple 은 출력 짧으니 토큰 한도도 작게 (비용 절감).
     const maxTokens = strength === "simple" ? 120 : strength === "middle" ? 400 : 800;
 
-    const res = await fetch(ANTHROPIC_API_URL, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": ANTHROPIC_VERSION,
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: maxTokens,
-        messages: [
-          { role: "user", content: buildPrompt({ diff, language, strength }) },
-        ],
-      }),
+    const body = JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      messages: [
+        { role: "user", content: buildPrompt({ diff, language, strength }) },
+      ],
     });
+
+    // 429/5xx 같은 transient 에러는 짧은 백오프로 자동 재시도. Anthropic 도 점진적 rate limit/과부하가 있다.
+    // signal 은 헬퍼의 30초 타임아웃 — 무한 대기 차단.
+    const res = await fetchWithRetry((signal) =>
+      fetch(ANTHROPIC_API_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": ANTHROPIC_VERSION,
+        },
+        body,
+        signal,
+      }),
+    );
 
     if (!res.ok) {
       // 에러 본문도 같이 던져야 사용자가 키 만료/모델 오타 등 원인 파악 가능.

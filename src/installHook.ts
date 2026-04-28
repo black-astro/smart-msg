@@ -15,6 +15,7 @@ import { execa } from "execa";
 import { loadConfig, updateConfig, getConfigDir } from "./config.js";
 import { getStagedDiff } from "./git.js";
 import { generateCommitMessage } from "./ai.js";
+import { t } from "./i18n.js";
 
 const HOOK_NAME = "prepare-commit-msg";
 // hook 파일 안에 이 마커가 있으면 "우리가 깐 hook" 으로 식별 → 안전한 재설치/제거 가능.
@@ -190,11 +191,44 @@ export async function runHookHandler(
   const diff = await getStagedDiff();
   if (!diff.trim()) return;
 
-  // 4) AI 호출. 실패해도 commit 자체는 진행되어야 한다.
+  // 4) AI 호출. 실패 시 동작은 사용자 설정(cfg.onFailure) 을 따른다.
+  //    - fallback (기본): 안내 코멘트 + 빈 본문을 적어 git 에디터가 열리고 사용자가 직접 작성 가능.
+  //    - abort         : msgFile 을 그대로 둬서 git 이 'empty commit message' 로 commit 을 취소.
+  //    hook 컨텍스트(특히 IDE) 에서는 인터랙티브 prompt 가 신뢰성 부족하므로,
+  //    매번 묻는 대신 사용자가 `sm config` 에서 미리 한 번 선택해두는 방식으로 설계되었다.
   try {
     const message = await generateCommitMessage(diff);
     await writeFile(msgFile, `${message}\n\n${existing}`, "utf-8");
   } catch (e) {
-    console.error(`[sm hook] ${(e as Error).message}`);
+    const errMsg = (e as Error).message ?? String(e);
+    console.error(`[sm hook] ${errMsg}`);
+
+    // 실패 동작 결정. config 로딩 실패해도 안전한 기본값(fallback) 으로 떨어지게 한다.
+    const cfg = await loadConfig().catch(() => null);
+    const onFailure = cfg?.onFailure ?? "fallback";
+
+    if (onFailure === "abort") {
+      // msgFile 을 건드리지 않고 그대로 종료 → git 이 'Aborting commit due to empty commit message'.
+      // 사용자가 의도적으로 abort 를 선택한 경우의 동작.
+      return;
+    }
+
+    // fallback: 안내가 담긴 빈 메시지 템플릿. # 로 시작하는 줄은 git 이 자동 제거하므로 commit 에 노이즈 없음.
+    // 의미있는 줄은 빈 채로 두어, 사용자가 메시지를 적지 않고 저장하면 git 의 표준 abort 동작과 동일하게 된다.
+    const m = t(cfg?.language ?? "en");
+    const firstLine = errMsg.split("\n")[0].slice(0, 200);
+    const fallback = [
+      "",
+      "",
+      `# ${m.hookFailureCommentIntro}`,
+      `# ${m.hookFailureCommentCause(firstLine)}`,
+      "",
+      existing,
+    ].join("\n");
+    try {
+      await writeFile(msgFile, fallback, "utf-8");
+    } catch {
+      // msgFile 쓰기 자체가 실패하면 더 할 수 있는 게 없다. stderr 메시지가 사용자에게 단서가 된다.
+    }
   }
 }

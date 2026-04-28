@@ -68,6 +68,16 @@ export interface Messages {
   configChangedStrength: (v: string) => string;
   configChangedModel: (v: string) => string;
   configChooseModelOf: (provider: string) => string;
+  configTargetOnFailure: string;
+  configCurrentOnFailure: (v: string) => string;
+  configChooseOnFailure: string;
+  onFailureFallback: string;
+  onFailureAbort: string;
+  configChangedOnFailure: (v: string) => string;
+
+  // hook 실패 안내 (msgFile 코멘트 + stderr).
+  hookFailureCommentIntro: string;
+  hookFailureCommentCause: (cause: string) => string;
 }
 
 const en: Messages = {
@@ -128,6 +138,15 @@ const en: Messages = {
   configChangedStrength: (v) => `strength changed to ${v}.`,
   configChangedModel:    (v) => `model changed to ${v}.`,
   configChooseModelOf: (provider) => `Choose ${provider} model`,
+  configTargetOnFailure: "on-failure (behavior when AI call fails)",
+  configCurrentOnFailure: (v) => `  on-failure: ${v}`,
+  configChooseOnFailure: "Choose hook behavior when AI call fails",
+  onFailureFallback: "fallback - open editor with empty template (write manually)",
+  onFailureAbort: "abort   - leave message empty so git aborts the commit",
+  configChangedOnFailure: (v) => `on-failure changed to ${v}.`,
+
+  hookFailureCommentIntro: "smart-msg: AI message generation failed. Write manually here, or run `sm c` to retry.",
+  hookFailureCommentCause: (cause) => `cause: ${cause}`,
 };
 
 const ko: Messages = {
@@ -188,6 +207,15 @@ const ko: Messages = {
   configChangedStrength: (v) => `strength 가 ${v} 로 변경되었습니다.`,
   configChangedModel:    (v) => `model 이 ${v} 로 변경되었습니다.`,
   configChooseModelOf: (provider) => `${provider} 의 모델을 선택합니다.`,
+  configTargetOnFailure: "on-failure (AI 호출 실패 시 동작)",
+  configCurrentOnFailure: (v) => `  on-failure: ${v}`,
+  configChooseOnFailure: "AI 호출 실패 시의 hook 동작을 선택합니다.",
+  onFailureFallback: "fallback - 안내가 담긴 빈 템플릿으로 에디터 열기 (직접 작성)",
+  onFailureAbort: "abort    - 메시지를 비워둬 git 이 commit 자체를 취소",
+  configChangedOnFailure: (v) => `on-failure 가 ${v} 로 변경되었습니다.`,
+
+  hookFailureCommentIntro: "smart-msg: AI 메시지 자동 생성에 실패했습니다. 여기에 직접 작성하시거나 'sm c' 로 다시 시도하시기 바랍니다.",
+  hookFailureCommentCause: (cause) => `원인: ${cause}`,
 };
 
 // 외부 사용 진입점. cfg.language 가 비어있는 경우 (sm login 의 첫 단계 등) 에는 호출자가 "en" 을 명시한다.
