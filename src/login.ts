@@ -158,17 +158,28 @@ export async function runLogin(): Promise<void> {
     console.log("(브라우저 자동 오픈에 실패하였습니다. 위 URL 을 직접 열어주시기 바랍니다.)");
   }
 
-  // 5) 키 입력을 받는다. 'invisible' 타입은 입력값을 화면에 일절 표시하지 않는다.
-  //    'password' 는 별표 마스킹을 하는데, 키가 100자가 넘는 Anthropic 키처럼 길어지면
-  //    별표가 터미널 너비를 초과해 줄바꿈이 발생, 화면이 어수선해지는 문제가 있어 invisible 로 전환한다.
-  //    어깨너머 노출 방지 효과는 동일하다.
+  // 5) 키 입력을 받는다.
+  //    의도적으로 'text' 타입을 사용해 입력값을 화면에 그대로 표시한다.
+  //    이전에는 invisible/password 로 가렸으나 다음 두 문제가 더 컸다:
+  //      - invisible: 붙여넣기 후 입력이 들어갔는지 사용자가 시각적으로 확인할 방법이 없음.
+  //      - password : 키가 100자가 넘는 Anthropic 키처럼 길어지면 별표가 터미널 폭을 넘어 줄바꿈 발생.
+  //    이 도구의 사용 맥락(개인 개발자가 자기 PC에서 본인 키를 등록) 에서는 어깨너머 노출 위험이
+  //    "키가 제대로 들어갔는지 못 보는 답답함" 보다 작다고 판단하여 text 로 전환한다.
+  //    혹시 모를 노출에 대비해 입력 직전 한 줄 안내를 띄운다.
+  console.log("");
+  console.log("(보안 안내) 입력하신 키가 화면에 그대로 표시됩니다. 주변에 사람이 있으면 화면을 잠시 가려주세요.");
+
   const { apiKey } = await prompts({
-    type: "invisible",
+    type: "text",
     name: "apiKey",
     message: "발급된 API 키를 입력합니다.",
   });
 
-  if (!apiKey) {
+  // 붙여넣기 시 종종 끝에 개행/공백이 따라붙는데 그대로 저장하면 인증 헤더에서 키가 깨져
+  // 401 같은 모호한 오류가 나온다. trim 으로 안전하게 정리한다.
+  const trimmedKey = typeof apiKey === "string" ? apiKey.trim() : "";
+
+  if (!trimmedKey) {
     console.log("키가 입력되지 않아 취소되었습니다.");
     return;
   }
@@ -179,10 +190,10 @@ export async function runLogin(): Promise<void> {
   const baseFields = { provider, model, language, strength };
   const patch =
     provider === "gemini"
-      ? { ...baseFields, geminiApiKey: apiKey }
+      ? { ...baseFields, geminiApiKey: trimmedKey }
       : provider === "openai"
-        ? { ...baseFields, openaiApiKey: apiKey }
-        : { ...baseFields, claudeApiKey: apiKey };
+        ? { ...baseFields, openaiApiKey: trimmedKey }
+        : { ...baseFields, claudeApiKey: trimmedKey };
 
   await updateConfig(patch);
 
