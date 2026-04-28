@@ -1,6 +1,23 @@
+<div align="center">
+
 # smart-msg
 
-`smart-msg` 는 staged 된 git diff 를 분석하여 Conventional Commit 형식의 커밋 메시지를 자동으로 생성하는 CLI 도구입니다. OpenAI 와 Anthropic Claude 를 지원하며, 한국어와 영어 출력을 모두 제공합니다.
+**AI 기반 Git 커밋 메시지 자동 생성 도구**
+
+staged 된 git diff 를 분석하여 Conventional Commit 형식의 메시지를 자동으로 생성합니다.<br>
+OpenAI 와 Anthropic Claude 를 지원하며, 한국어와 영어 출력을 모두 제공합니다.
+
+<br>
+
+[![version](https://img.shields.io/badge/version-1.0.0-555555?style=flat-square)](https://github.com/black-astro/smart-msg)
+[![license](https://img.shields.io/badge/license-ISC-555555?style=flat-square)](#license)
+[![node](https://img.shields.io/badge/node-%3E%3D18-555555?style=flat-square)](https://nodejs.org)
+[![OpenAI](https://img.shields.io/badge/OpenAI-supported-black?style=flat-square)](https://platform.openai.com)
+[![Claude](https://img.shields.io/badge/Claude-supported-black?style=flat-square)](https://www.anthropic.com)
+
+</div>
+
+<br>
 
 ```bash
 git add .
@@ -9,11 +26,89 @@ sm c
 
 위 두 명령으로 staged 변경분에 대한 커밋 메시지가 추천되며, 확인 후 커밋이 진행됩니다.
 
+```text
+$ sm c
+
+생성된 커밋 메시지:
+feat(auth): add OAuth login flow
+
+? 이 메시지로 커밋을 진행하시겠습니까? › (Y/n)
+```
+
+<br>
+
 ---
 
-## 사용 방법
+## 목차
 
-### 1. 최초 설정
+<table>
+<tr>
+<td>
+
+- [설치](#설치)
+- [최초 설정](#최초-설정)
+- [기본 사용법](#기본-사용법)
+- [명령어](#명령어)
+
+</td>
+<td>
+
+- [옵션](#옵션)
+- [Git Hook](#git-hook)
+- [제거](#제거)
+
+</td>
+</tr>
+</table>
+
+<br>
+
+---
+
+## 설치
+
+### npm 글로벌 설치 (권장)
+
+```bash
+npm install -g smart-msg
+```
+
+설치 시 `prepare` 스크립트가 자동으로 빌드를 수행하므로, 별도의 후속 절차는 필요하지 않습니다.
+
+### GitHub repository 직접 설치
+
+npm registry 에 게시되지 않은 환경 또는 사내 환경에서는 GitHub repository 에서 직접 설치할 수 있습니다.
+
+```bash
+npm install -g git+https://github.com/black-astro/smart-msg.git
+```
+
+특정 태그를 고정하려면 `#v1.0.0` 과 같이 지정합니다.
+
+```bash
+npm install -g git+https://github.com/black-astro/smart-msg.git#v1.0.0
+```
+
+### 동작 환경
+
+- Node.js 18 이상
+- git 2.x 이상
+- Windows / macOS / Linux 모두 지원
+
+설치가 완료되면 다음 명령으로 동작을 확인할 수 있습니다.
+
+```bash
+sm --version
+```
+
+> [!NOTE]
+> 설치 직후 [최초 설정](#최초-설정) 단계로 진행하시기 바랍니다. `sm login` 의 마지막 단계에서 현재 프로젝트가 git 저장소인 경우 자동으로 hook 설치 여부를 묻습니다. 이 흐름을 따르면 IDE 커밋 창 통합까지 한 번에 완료됩니다.
+
+<br>
+
+---
+
+## 최초 설정
 
 ```bash
 sm login
@@ -21,20 +116,31 @@ sm login
 
 다음 네 가지 항목을 차례로 선택합니다.
 
-1. AI provider — OpenAI 또는 Anthropic Claude
-2. 모델 — provider 별 권장 모델 목록에서 선택
-3. 출력 언어 — 한국어 또는 영어
-4. 메시지 강도 — simple / middle / hard
+|  단계  | 항목                  | 선택지                          |
+| :--: | ------------------- | ---------------------------- |
+|  1   | AI provider         | OpenAI / Anthropic Claude    |
+|  2   | 모델                  | provider 별 권장 모델 목록           |
+|  3   | 출력 언어               | 한국어 / 영어                     |
+|  4   | 메시지 강도              | simple / middle / hard       |
 
-선택이 완료되면 브라우저에서 API 키 발급 페이지가 자동으로 열립니다. 키 발급 후 입력란에 입력하여 등록을 마칩니다. 설정은 `~/.smart-msg/config.json` 에 저장되며 모든 프로젝트에서 동일하게 사용됩니다.
+선택이 완료되면 브라우저에서 API 키 발급 페이지가 자동으로 열립니다. 키 발급 후 입력란에 입력하여 등록을 마칩니다.
 
-### 2. 변경사항 스테이징
+> [!NOTE]
+> 설정은 `~/.smart-msg/config.json` 에 저장되며, 모든 프로젝트에서 동일하게 사용됩니다. 최초 1회만 수행하면 됩니다.
+
+<br>
+
+---
+
+## 기본 사용법
+
+#### 1. 변경사항 스테이징
 
 ```bash
 git add .
 ```
 
-### 3. 커밋
+#### 2. 커밋 실행
 
 ```bash
 sm c
@@ -42,19 +148,23 @@ sm c
 
 생성된 메시지가 출력되며, 확인 입력 후 자동으로 커밋이 진행됩니다.
 
+<br>
+
 ---
 
 ## 명령어
 
-| 명령 | 설명 |
-| --- | --- |
-| `sm login` | provider, 모델, 언어, 강도, API 키를 처음 설정합니다 |
-| `sm c` (= `sm commit`) | staged diff 를 기반으로 메시지를 생성하고 커밋합니다 |
-| `sm config` | 언어, 강도, 모델 설정을 변경합니다 |
-| `sm status` | 현재 저장된 설정을 출력합니다 |
-| `sm install-hook` | 현재 프로젝트에 git prepare-commit-msg hook 을 설치합니다 |
-| `sm logout` | 저장된 API 키를 제거합니다 |
-| `sm uninstall` | 모든 설정 및 hook 을 제거합니다 |
+| 명령                          | 설명                                                  |
+| --------------------------- | --------------------------------------------------- |
+| `sm login`                  | provider, 모델, 언어, 강도, API 키를 처음 설정합니다              |
+| `sm c` <sub>(= `sm commit`)</sub> | staged diff 를 기반으로 메시지를 생성하고 커밋합니다                   |
+| `sm config`                 | 언어, 강도, 모델 설정을 변경합니다                                |
+| `sm status`                 | 현재 저장된 설정을 출력합니다                                    |
+| `sm install-hook`           | 현재 프로젝트에 git prepare-commit-msg hook 을 설치합니다        |
+| `sm logout`                 | 저장된 API 키를 제거합니다                                    |
+| `sm uninstall`              | 모든 설정 및 hook 을 제거합니다                                |
+
+<br>
 
 ---
 
@@ -62,20 +172,32 @@ sm c
 
 ### Language
 
-| 값 | 출력 언어 |
-| --- | --- |
+|  값  | 출력 언어                                          |
+| :-: | ---------------------------------------------- |
 | `ko` | 한국어 (`feat`, `fix` 등 type 키워드는 영어 유지) |
-| `en` | 영어 |
+| `en` | 영어                                            |
 
-### Strength — 메시지 강도
+<br>
 
-#### simple
+### Strength
+
+메시지의 길이와 상세도를 결정합니다.
+
+<details>
+<summary><b>simple</b> &nbsp;—&nbsp; 한 줄 (Conventional Commit 형식)</summary>
+
+<br>
 
 ```
 feat(auth): add OAuth login flow
 ```
 
-#### middle
+</details>
+
+<details>
+<summary><b>middle</b> &nbsp;—&nbsp; 첫 줄 + 본문 2~5줄</summary>
+
+<br>
 
 ```
 feat(auth): add OAuth login flow
@@ -85,7 +207,12 @@ feat(auth): add OAuth login flow
 - 발급된 토큰을 ~/.smart-msg/config.json 에 저장
 ```
 
-#### hard
+</details>
+
+<details>
+<summary><b>hard</b> &nbsp;—&nbsp; 첫 줄 + README 수준 본문</summary>
+
+<br>
 
 ```
 feat(auth): add OAuth login flow
@@ -101,6 +228,10 @@ feat(auth): add OAuth login flow
 영향: 기존 API 키 사용자의 동작은 변경되지 않습니다.
 ```
 
+</details>
+
+<br>
+
 ### 설정 변경
 
 ```bash
@@ -108,6 +239,8 @@ sm config
 ```
 
 메뉴에서 언어, 강도, 모델 중 하나를 선택하여 변경합니다.
+
+<br>
 
 ---
 
@@ -120,17 +253,49 @@ cd /path/to/project
 sm install-hook
 ```
 
-| 상황 | 동작 |
-| --- | --- |
-| `git commit` (메시지 미지정) | AI 가 메시지를 자동 생성합니다 |
-| IntelliJ 커밋 창 | AI 가 메시지를 자동 생성합니다 |
-| `git commit -m "직접 메시지"` | hook 이 비켜서며 사용자 메시지를 우선합니다 |
-| `git commit --amend` | 기존 메시지를 보호합니다 |
-| merge / squash 커밋 | 보호합니다 |
-| AI 호출 실패 | 커밋 자체는 정상 진행됩니다 |
-| staged 변경 없음 | AI 를 호출하지 않습니다 |
+<table>
+<thead>
+<tr>
+<th align="left">상황</th>
+<th align="left">동작</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>git commit</code> &nbsp;<sub>(메시지 미지정)</sub></td>
+<td>AI 가 메시지를 자동 생성합니다</td>
+</tr>
+<tr>
+<td>IntelliJ 커밋 창</td>
+<td>AI 가 메시지를 자동 생성합니다</td>
+</tr>
+<tr>
+<td><code>git commit -m "..."</code></td>
+<td>hook 이 비켜서며 사용자 메시지를 우선합니다</td>
+</tr>
+<tr>
+<td><code>git commit --amend</code></td>
+<td>기존 메시지를 보호합니다</td>
+</tr>
+<tr>
+<td>merge / squash 커밋</td>
+<td>보호합니다</td>
+</tr>
+<tr>
+<td>AI 호출 실패</td>
+<td>커밋 자체는 정상 진행됩니다</td>
+</tr>
+<tr>
+<td>staged 변경 없음</td>
+<td>AI 를 호출하지 않습니다</td>
+</tr>
+</tbody>
+</table>
 
-hook 은 프로젝트당 1회만 설치하면 됩니다. 설치된 hook 은 `sm uninstall` 실행 시 한꺼번에 제거됩니다.
+> [!TIP]
+> hook 은 프로젝트당 1회만 설치하면 됩니다. 설치된 hook 은 `sm uninstall` 실행 시 한꺼번에 제거됩니다.
+
+<br>
 
 ---
 
@@ -141,3 +306,17 @@ sm uninstall
 ```
 
 설정 디렉토리(`~/.smart-msg/`)와 설치된 hook 을 모두 제거합니다.
+
+<br>
+
+---
+
+## License
+
+ISC
+
+<br>
+
+<div align="center">
+<sub>Built with TypeScript &nbsp;·&nbsp; Powered by OpenAI &amp; Anthropic Claude</sub>
+</div>
