@@ -48,3 +48,4 @@ coverage/
 
 # Optional npm pack output
 *.tgz
+.npmrc

@@ -46,13 +46,14 @@ feat(auth): add OAuth login flow
 <td>
 
 - [설치](#설치)
+- [지원 환경](#지원-환경)
 - [최초 설정](#최초-설정)
 - [기본 사용법](#기본-사용법)
-- [명령어](#명령어)
 
 </td>
 <td>
 
+- [명령어](#명령어)
 - [옵션](#옵션)
 - [Git Hook](#git-hook)
 - [제거](#제거)
@@ -73,21 +74,108 @@ feat(auth): add OAuth login flow
 npm install -g smart-msg
 ```
 
-설치 시 `prepare` 스크립트가 자동으로 빌드를 수행하므로, 별도의 후속 절차는 필요하지 않습니다.
+특정 버전을 고정하려면 `@` 뒤에 버전을 명시합니다.
+
+```bash
+npm install -g smart-msg@1.0.0
+```
+
+설치 시 `prepare` 스크립트가 자동으로 빌드를 수행하므로 별도의 후속 절차는 필요하지 않습니다.
 
 ### GitHub repository 직접 설치
 
-npm registry 에 게시되지 않은 환경 또는 사내 환경에서는 GitHub repository 에서 직접 설치할 수 있습니다.
+GitHub Releases 의 tag 를 통해 동일한 시점을 설치할 수 있습니다. npm registry 에 접근하지 않는 환경에서 사용합니다.
 
 ```bash
+# 최신 main 브랜치 시점
 npm install -g git+https://github.com/black-astro/smart-msg.git
-```
 
-특정 태그를 고정하려면 `#v1.0.0` 과 같이 지정합니다.
-
-```bash
+# 특정 tag (npm 버전과 동일하게 동기화됨)
 npm install -g git+https://github.com/black-astro/smart-msg.git#v1.0.0
 ```
+
+> [!NOTE]
+> npm 의 `@1.0.0` 과 GitHub 의 `#v1.0.0` 은 동일한 코드 시점을 가리킵니다. 어느 방식을 선택하더라도 결과는 같습니다.
+
+### 프로젝트 로컬 설치 (선택)
+
+특정 프로젝트에서만 사용하고자 하는 경우 devDependency 로 추가하는 방식도 가능합니다.
+
+```bash
+npm install --save-dev smart-msg
+```
+
+이 경우 명령은 `npx sm` 형식으로 실행합니다.
+
+```bash
+npx sm c
+```
+
+> [!TIP]
+> 글로벌 설치가 표준 사용 방식입니다. 로컬 설치는 팀 단위로 동일한 버전을 강제하고자 할 때 또는 글로벌 설치 권한이 없는 환경에서만 권장됩니다.
+
+### 설치 확인
+
+```bash
+sm --version
+```
+
+<br>
+
+---
+
+## 지원 환경
+
+`smart-msg` 는 git 명령이 동작하는 모든 환경에서 동일하게 사용할 수 있습니다. Node.js 18 이상이 설치되어 있어야 합니다.
+
+### 터미널
+
+| 환경 | 사용 방법 | 비고 |
+| --- | --- | --- |
+| Git Bash (Windows) | `sm` 명령을 그대로 사용 | 별도 설정 없음 |
+| PowerShell | `sm` 명령을 그대로 사용 | 실행 정책 관련 주의사항은 아래 참조 |
+| Windows CMD | `sm` 명령을 그대로 사용 | 별도 설정 없음 |
+| macOS Terminal / iTerm2 | `sm` 명령을 그대로 사용 | 별도 설정 없음 |
+| Linux Bash / Zsh | `sm` 명령을 그대로 사용 | 별도 설정 없음 |
+
+#### PowerShell 실행 정책
+
+npm 글로벌 설치 시 npm 이 자동으로 생성하는 `sm.ps1` 래퍼 스크립트가 PowerShell 실행 정책에 의해 차단되는 경우가 있습니다. 차단 메시지가 발생하면 다음 명령으로 정책을 완화합니다.
+
+```powershell
+# 현재 사용자 한정으로 RemoteSigned 정책 적용 (권장)
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+이 정책은 로컬에서 작성된 스크립트는 그대로 허용하고, 인터넷에서 받은 스크립트는 서명을 요구하므로 보안과 사용성의 균형이 잡혀 있습니다.
+
+<br>
+
+### IDE 통합
+
+| IDE | 사용 방법 |
+| --- | --- |
+| IntelliJ IDEA / WebStorm / PyCharm | 내장 터미널 (`Alt + F12`) 에서 `sm` 명령 사용. 커밋 창 통합은 `sm install-hook` 설치 후 `Ctrl + K` 로 동작 |
+| VS Code | 내장 터미널 (`` Ctrl + ` ``) 에서 `sm` 명령 사용. Source Control 패널의 commit 통합은 `sm install-hook` 설치 후 동작 |
+| Cursor / Trae 등 VS Code 기반 IDE | VS Code 와 동일하게 동작 |
+| 기타 IDE / 에디터 | 내장 터미널이 있는 모든 IDE 에서 동일하게 사용 가능 |
+
+#### IntelliJ 커밋 창 통합
+
+`sm install-hook` 을 프로젝트에 설치한 뒤 `Ctrl + K` 로 IntelliJ 커밋 창을 열면, 메시지 입력란에 AI 가 생성한 커밋 메시지가 자동으로 채워집니다. 메시지 검토 후 그대로 commit 하거나 수정하여 commit 합니다.
+
+#### VS Code Source Control 통합
+
+`sm install-hook` 설치 후 좌측 Source Control 패널 (`Ctrl + Shift + G`) 에서 변경사항을 stage 하고 commit 명령을 실행하면, 메시지 입력란에 AI 가 생성한 메시지가 자동으로 채워집니다.
+
+> [!TIP]
+> IDE 통합은 git hook 을 통해 동작합니다. `sm login` 의 마지막 단계에서 자동으로 hook 설치 여부를 묻거나, 추후 `sm install-hook` 명령으로 직접 설치할 수 있습니다.
+
+<br>
+
+### Java / Python / Go 등 비 Node.js 프로젝트
+
+`smart-msg` 는 글로벌 CLI 이므로 프로젝트 언어와 무관하게 동작합니다. Java / Spring, Python / Django, Go 등 어떤 프로젝트에서도 동일하게 `sm c` 명령으로 사용할 수 있습니다. `node_modules` 폴더가 프로젝트 안에 생성되지 않습니다.
 
 ### 동작 환경
 
