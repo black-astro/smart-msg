@@ -4,9 +4,11 @@ import { loadConfig } from "./config.js";
 import type { CommitProvider } from "./providers/types.js";
 import { openaiProvider } from "./providers/openai.js";
 import { claudeProvider } from "./providers/claude.js";
+import { geminiProvider } from "./providers/gemini.js";
 
 // provider 식별자 → 실제 구현체 매핑. 새 provider 추가 시 이 객체에 한 줄만 추가.
 const PROVIDERS: Record<string, CommitProvider> = {
+  gemini: geminiProvider,
   openai: openaiProvider,
   claude: claudeProvider,
 };
@@ -25,8 +27,14 @@ export async function generateCommitMessage(diff: string): Promise<string> {
   }
 
   // 3) provider 별로 키가 따로 저장되어 있음. 해당 provider 키만 꺼내서 전달.
+  //    각 키 필드를 독립적으로 보관하므로, 사용자가 여러 provider 를 등록해두고
+  //    `sm config` 로 자유롭게 전환할 수 있다.
   const apiKey =
-    config.provider === "openai" ? config.openaiApiKey : config.claudeApiKey;
+    config.provider === "gemini"
+      ? config.geminiApiKey
+      : config.provider === "openai"
+        ? config.openaiApiKey
+        : config.claudeApiKey;
   if (!apiKey) {
     throw new Error(
       `${config.provider} API 키가 없습니다. \`sm login\` 명령으로 다시 로그인하시기 바랍니다.`,

@@ -11,7 +11,9 @@ import { RECOMMENDED_MODELS } from "./providers/types.js";
 import { runInstallHookGlobal } from "./installHook.js";
 
 // provider 별 키 발급 URL. 사용자의 클릭 및 복사 부담을 줄이기 위해 자동으로 페이지를 연다.
+// gemini 는 Google AI Studio 에서 무료로 키를 발급받을 수 있어 카드 등록이 필요 없다.
 const KEY_PAGE_URL: Record<Provider, string> = {
+  gemini: "https://aistudio.google.com/app/apikey",
   openai: "https://platform.openai.com/api-keys",
   claude: "https://console.anthropic.com/settings/keys",
 };
@@ -50,13 +52,16 @@ export async function pickStrength(initial?: Strength): Promise<Strength | null>
 
 export async function runLogin(): Promise<void> {
   // 1) AI provider 선택. prompts 의 select 타입은 화살표 키로 선택 가능하다.
+  //    Gemini 는 무료 티어가 넉넉하여 기본 권장으로 맨 위에 두고 initial 도 0 으로 지정한다.
+  //    OpenAI / Claude 는 종량제(유료) 임을 사용자가 선택 단계에서 즉시 인지할 수 있도록 라벨에 명시한다.
   const { provider } = await prompts({
     type: "select",
     name: "provider",
     message: "사용할 AI provider 를 선택합니다.",
     choices: [
-      { title: "OpenAI (GPT)", value: "openai" },
-      { title: "Anthropic (Claude)", value: "claude" },
+      { title: "Google Gemini  — 무료 티어 제공 (권장)", value: "gemini" },
+      { title: "OpenAI (GPT)   — API 사용량 만큼 과금 (유료)", value: "openai" },
+      { title: "Anthropic Claude — API 사용량 만큼 과금 (유료)", value: "claude" },
     ],
     initial: 0,
   });
@@ -68,10 +73,15 @@ export async function runLogin(): Promise<void> {
   }
 
   // 2) 모델 선택. provider 별 권장 모델은 RECOMMENDED_MODELS 에서 가져온다.
+  //    Gemini 는 권장 모델이 모두 무료 티어 대상이라 안내 문구를 다르게 표시한다.
+  const modelMessage =
+    provider === "gemini"
+      ? "모델을 선택합니다. (무료 티어 사용 가능)"
+      : "모델을 선택합니다. (저비용 순)";
   const { model } = await prompts({
     type: "select",
     name: "model",
-    message: "모델을 선택합니다. (저비용 순)",
+    message: modelMessage,
     choices: RECOMMENDED_MODELS[provider as Provider].map((m) => ({
       title: m,
       value: m,
@@ -97,6 +107,17 @@ export async function runLogin(): Promise<void> {
   }
 
   // 4) 브라우저에서 API 키 발급 페이지를 자동으로 연다. 자동 오픈에 실패한 경우 URL 을 안내한다.
+  //    OpenAI / Claude 는 API 가 종량제이므로 키 발급 직전에 한 번 더 비용 발생 사실을 안내한다.
+  //    ChatGPT Plus / Claude Max 등 구독 결제와는 별개의 결제 체계임을 사용자가 혼동하지 않게 한다.
+  if (provider === "openai" || provider === "claude") {
+    const label = provider === "openai" ? "OpenAI" : "Anthropic Claude";
+    console.log("");
+    console.log(`[안내] ${label} API 는 사용량 기반 종량제입니다.`);
+    console.log("       ChatGPT Plus / Claude Max 등의 구독 결제로는 API 호출이 동작하지 않으며,");
+    console.log("       콘솔에서 별도로 카드 등록 또는 크레딧 충전이 필요합니다.");
+    console.log("       무료로 사용하시려면 'Google Gemini' 를 선택하시기 바랍니다.");
+  }
+
   const url = KEY_PAGE_URL[provider as Provider];
   console.log(`\n브라우저에서 API 키 발급 페이지를 엽니다: ${url}`);
   try {
@@ -118,11 +139,15 @@ export async function runLogin(): Promise<void> {
   }
 
   // 6) config 에 저장한다. provider 별 키 필드를 분기하여 다른 provider 의 키는 보존한다.
+  //    동일한 사용자가 Gemini / OpenAI / Claude 키를 모두 등록해두고 `sm config` 에서 전환할 수 있게
+  //    각 키는 독립적으로 보관한다.
   const baseFields = { provider, model, language, strength };
   const patch =
-    provider === "openai"
-      ? { ...baseFields, openaiApiKey: apiKey }
-      : { ...baseFields, claudeApiKey: apiKey };
+    provider === "gemini"
+      ? { ...baseFields, geminiApiKey: apiKey }
+      : provider === "openai"
+        ? { ...baseFields, openaiApiKey: apiKey }
+        : { ...baseFields, claudeApiKey: apiKey };
 
   await updateConfig(patch);
 

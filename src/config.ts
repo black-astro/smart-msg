@@ -6,7 +6,8 @@ import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 
 // 어떤 AI 를 쓰는지 식별하는 태그. 새 provider 추가하면 여기 늘리면 됨.
-export type Provider = "openai" | "claude";
+// gemini 는 무료 티어가 넉넉해 기본 권장 provider.
+export type Provider = "gemini" | "openai" | "claude";
 
 // 커밋 메시지 출력 언어.
 export type Language = "ko" | "en";
@@ -24,6 +25,7 @@ export interface Config {
   model: string;
   language: Language;
   strength: Strength;
+  geminiApiKey?: string;
   openaiApiKey?: string;
   claudeApiKey?: string;
   // 프로젝트 단위로 깔아준 git hook 경로 목록. uninstall 시 자동 제거하려고 추적.
