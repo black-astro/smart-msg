@@ -1,0 +1,44 @@
+{
+  "name": "smart-msg",
+  "version": "1.0.0",
+  "description": "AI git commit message generator (OpenAI / Claude)",
+  "type": "module",
+  "bin": {
+    "sm": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prepare": "tsc"
+  },
+  "keywords": [
+    "git",
+    "commit",
+    "ai",
+    "openai",
+    "claude",
+    "cli",
+    "conventional-commits"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "commander": "^14.0.3",
+    "dotenv": "^17.4.2",
+    "execa": "^9.6.1",
+    "open": "^11.0.0",
+    "openai": "^6.34.0",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/prompts": "^2.4.9",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}
