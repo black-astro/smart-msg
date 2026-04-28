@@ -5,13 +5,14 @@
 **AI 기반 Git 커밋 메시지 자동 생성 도구**
 
 staged 된 git diff 를 분석하여 Conventional Commit 형식의 메시지를 자동으로 생성합니다.<br>
-Google Gemini, OpenAI, Anthropic Claude 를 지원하며, 한국어와 영어 출력을 모두 제공합니다.
+Google Gemini, Groq (Llama), OpenAI, Anthropic Claude 를 지원하며, 한국어와 영어 출력을 모두 제공합니다.
 
 <br>
 
-[![version](https://img.shields.io/badge/version-1.1.51-555555?style=flat-square)](https://www.npmjs.com/package/smart-msg)
+[![version](https://img.shields.io/badge/version-1.1.53-555555?style=flat-square)](https://www.npmjs.com/package/smart-msg)
 [![license](https://img.shields.io/badge/license-ISC-555555?style=flat-square)](#license)
 [![node](https://img.shields.io/badge/node-%3E%3D18-555555?style=flat-square)](https://nodejs.org)
+[![Groq](https://img.shields.io/badge/Groq-free%20tier-F55036?style=flat-square)](https://console.groq.com)
 [![Gemini](https://img.shields.io/badge/Gemini-free%20tier-34A853?style=flat-square)](https://aistudio.google.com)
 [![OpenAI](https://img.shields.io/badge/OpenAI-supported-black?style=flat-square)](https://platform.openai.com)
 [![Claude](https://img.shields.io/badge/Claude-supported-black?style=flat-square)](https://www.anthropic.com)
@@ -96,12 +97,16 @@ sm login
 
 | Provider                | 비용                | 키 발급                                              | 추천 대상                              |
 | ----------------------- | ----------------- | ------------------------------------------------- | ---------------------------------- |
-| **Google Gemini** ⭐     | 무료 티어 제공          | [Google AI Studio](https://aistudio.google.com/app/apikey) (카드 등록 불필요) | 대부분의 사용자 — 개인 커밋 용도로 한도가 매우 넉넉합니다  |
+| **Groq (Llama)** ⭐      | 무료 티어 제공          | [Groq Console](https://console.groq.com/keys) (카드 등록 불필요) | **무료 사용 권장** — 자체 LPU 인프라로 503 거의 없음 + 매우 빠름 |
+| Google Gemini           | 무료 티어 제공          | [Google AI Studio](https://aistudio.google.com/app/apikey) (카드 등록 불필요) | 무료 티어 트래픽이 몰리면 503 자주 발생할 수 있음     |
 | OpenAI (GPT)            | 사용량만큼 과금 (유료)     | [OpenAI Platform](https://platform.openai.com/api-keys) (카드 등록 필수)    | OpenAI 생태계를 이미 사용 중인 경우            |
 | Anthropic Claude        | 사용량만큼 과금 (유료)     | [Anthropic Console](https://console.anthropic.com/settings/keys) (카드 등록 필수) | Claude 의 메시지 품질을 선호하는 경우           |
 
 > [!IMPORTANT]
-> **ChatGPT Plus / Claude Max 등 구독 결제로는 API 호출이 동작하지 않습니다.** 구독 상품과 개발자 API 는 결제 시스템이 분리되어 있으며, OpenAI / Claude 를 사용하시려면 콘솔에서 별도로 카드 등록 또는 크레딧 충전이 필요합니다. **무료로 사용하시려면 Google Gemini 를 선택하시기 바랍니다.**
+> **ChatGPT Plus / Claude Max 등 구독 결제로는 API 호출이 동작하지 않습니다.** 구독 상품과 개발자 API 는 결제 시스템이 분리되어 있으며, OpenAI / Claude 를 사용하시려면 콘솔에서 별도로 카드 등록 또는 크레딧 충전이 필요합니다. **무료로 사용하시려면 Groq 또는 Google Gemini 를 선택하시기 바랍니다.**
+
+> [!NOTE]
+> Gemini 무료 티어는 인기 많은 시간대에 503 (high demand) 응답이 자주 발생할 수 있습니다. 자동 재시도가 적용되어 있긴 하지만 빈도가 높다면 **Groq 으로 전환**을 권장합니다 (`sm login` 다시 실행). Groq 은 자체 LPU 인프라를 사용해 무료 티어에서도 503 빈도가 매우 낮고 응답 속도도 5~10배 빠릅니다.
 
 <br>
 
@@ -172,11 +177,12 @@ feat(auth): add OAuth login flow
 
 ### Provider 별 권장 모델
 
-| Provider | 권장 모델                                                            |
-| -------- | ---------------------------------------------------------------- |
-| Gemini   | `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.0-flash`  |
-| OpenAI   | `gpt-4.1-nano`, `gpt-4o-mini`, `gpt-4.1-mini`                    |
-| Claude   | `claude-haiku-4-5`, `claude-3-5-haiku-latest`                    |
+| Provider | 권장 모델                                                                          |
+| -------- | ------------------------------------------------------------------------------ |
+| Gemini   | `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.0-flash`                |
+| Groq     | `llama-3.1-8b-instant`, `llama-3.3-70b-versatile`, `gemma2-9b-it`              |
+| OpenAI   | `gpt-4.1-nano`, `gpt-4o-mini`, `gpt-4.1-mini`                                  |
+| Claude   | `claude-haiku-4-5`, `claude-3-5-haiku-latest`                                  |
 
 ### Language
 
@@ -408,5 +414,5 @@ ISC
 <br>
 
 <div align="center">
-<sub>Built with TypeScript &nbsp;·&nbsp; Powered by Google Gemini, OpenAI &amp; Anthropic Claude</sub>
+<sub>Built with TypeScript &nbsp;·&nbsp; Powered by Google Gemini, Groq, OpenAI &amp; Anthropic Claude</sub>
 </div>

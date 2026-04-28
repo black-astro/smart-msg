@@ -5,10 +5,12 @@ import type { CommitProvider } from "./providers/types.js";
 import { openaiProvider } from "./providers/openai.js";
 import { claudeProvider } from "./providers/claude.js";
 import { geminiProvider } from "./providers/gemini.js";
+import { groqProvider } from "./providers/groq.js";
 
 // provider 식별자 → 실제 구현체 매핑. 새 provider 추가 시 이 객체에 한 줄만 추가.
 const PROVIDERS: Record<string, CommitProvider> = {
   gemini: geminiProvider,
+  groq: groqProvider,
   openai: openaiProvider,
   claude: claudeProvider,
 };
@@ -32,9 +34,11 @@ export async function generateCommitMessage(diff: string): Promise<string> {
   const apiKey =
     config.provider === "gemini"
       ? config.geminiApiKey
-      : config.provider === "openai"
-        ? config.openaiApiKey
-        : config.claudeApiKey;
+      : config.provider === "groq"
+        ? config.groqApiKey
+        : config.provider === "openai"
+          ? config.openaiApiKey
+          : config.claudeApiKey;
   if (!apiKey) {
     throw new Error(
       `${config.provider} API 키가 없습니다. \`sm login\` 명령으로 다시 로그인하시기 바랍니다.`,

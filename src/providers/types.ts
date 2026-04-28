@@ -20,9 +20,11 @@ export interface CommitProvider {
 }
 
 // 각 provider 가 추천하는 저비용 모델 목록. login 시 사용자에게 선택지로 보여줌.
-// 가장 저렴한 게 맨 앞에 오도록 정렬. gemini 는 무료 티어가 있는 모델만 노출.
-export const RECOMMENDED_MODELS: Record<"gemini" | "openai" | "claude", string[]> = {
+// 가장 저렴/안정적인 게 맨 앞에 오도록 정렬. gemini/groq 은 무료 티어 모델만 노출.
+export const RECOMMENDED_MODELS: Record<"gemini" | "groq" | "openai" | "claude", string[]> = {
   gemini: ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"],
+  // Groq 무료 티어 인기 모델. llama-3.1-8b-instant 가 가장 빠르고 commit 메시지엔 충분.
+  groq: ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "gemma2-9b-it"],
   openai: ["gpt-4.1-nano", "gpt-4o-mini", "gpt-4.1-mini"],
   claude: ["claude-haiku-4-5", "claude-3-5-haiku-latest"],
 };

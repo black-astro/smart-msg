@@ -16,6 +16,7 @@ export interface Messages {
 
   chooseProvider: string;
   providerGeminiLabel: string;
+  providerGroqLabel: string;
   providerOpenaiLabel: string;
   providerClaudeLabel: string;
 
@@ -89,7 +90,8 @@ const en: Messages = {
   langOptionKo: "한국어 (ko)",
 
   chooseProvider: "Choose AI provider",
-  providerGeminiLabel: "Google Gemini  - Free tier available (recommended)",
+  providerGeminiLabel: "Google Gemini  - Free tier (may return 503 under high demand)",
+  providerGroqLabel:   "Groq (Llama)   - Free tier, fast & stable (recommended for free use)",
   providerOpenaiLabel: "OpenAI (GPT)   - Pay-as-you-go (paid)",
   providerClaudeLabel: "Anthropic Claude - Pay-as-you-go (paid)",
 
@@ -160,7 +162,8 @@ const ko: Messages = {
   langOptionKo: "한국어 (ko)",
 
   chooseProvider: "사용할 AI provider 를 선택합니다",
-  providerGeminiLabel: "Google Gemini  — 무료 티어 제공 (권장)",
+  providerGeminiLabel: "Google Gemini  — 무료 티어 (트래픽 몰리면 503 응답 잦음)",
+  providerGroqLabel:   "Groq (Llama)   — 무료 티어, 빠르고 안정적 (무료 사용 권장)",
   providerOpenaiLabel: "OpenAI (GPT)   — API 사용량 만큼 과금 (유료)",
   providerClaudeLabel: "Anthropic Claude — API 사용량 만큼 과금 (유료)",
 

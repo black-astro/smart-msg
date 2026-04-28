@@ -18,6 +18,7 @@ import { askYesNo } from "./cliPrompt.js";
 // gemini 는 Google AI Studio 에서 무료로 키를 발급받을 수 있어 카드 등록이 필요 없다.
 const KEY_PAGE_URL: Record<Provider, string> = {
   gemini: "https://aistudio.google.com/app/apikey",
+  groq: "https://console.groq.com/keys",
   openai: "https://platform.openai.com/api-keys",
   claude: "https://console.anthropic.com/settings/keys",
 };
@@ -87,6 +88,7 @@ export async function runLogin(): Promise<void> {
     message: m.chooseProvider,
     choices: [
       { title: m.providerGeminiLabel, value: "gemini" },
+      { title: m.providerGroqLabel, value: "groq" },
       { title: m.providerOpenaiLabel, value: "openai" },
       { title: m.providerClaudeLabel, value: "claude" },
     ],
@@ -99,8 +101,11 @@ export async function runLogin(): Promise<void> {
   }
 
   // 3) 모델 선택. provider 별 권장 모델 목록을 그대로 노출.
+  //    무료 티어를 가진 provider (gemini/groq) 는 안내 문구를 다르게 표시.
   const modelMessage =
-    provider === "gemini" ? m.chooseModelGemini : m.chooseModelDefault;
+    provider === "gemini" || provider === "groq"
+      ? m.chooseModelGemini
+      : m.chooseModelDefault;
   const { model } = await prompts({
     type: "select",
     name: "model",
@@ -166,9 +171,11 @@ export async function runLogin(): Promise<void> {
   const patch =
     provider === "gemini"
       ? { ...baseFields, geminiApiKey: trimmedKey }
-      : provider === "openai"
-        ? { ...baseFields, openaiApiKey: trimmedKey }
-        : { ...baseFields, claudeApiKey: trimmedKey };
+      : provider === "groq"
+        ? { ...baseFields, groqApiKey: trimmedKey }
+        : provider === "openai"
+          ? { ...baseFields, openaiApiKey: trimmedKey }
+          : { ...baseFields, claudeApiKey: trimmedKey };
 
   await updateConfig(patch);
 
