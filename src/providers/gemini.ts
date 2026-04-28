@@ -11,7 +11,7 @@ const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models
 export const geminiProvider: CommitProvider = {
   name: "gemini",
 
-  async generate({ diff, model, apiKey, language, strength }) {
+  async generate({ diff, model, apiKey, language, strength, tone }) {
     // 강도별 출력 토큰 한도. simple 은 짧으니 한도도 작게 → 비용/시간 모두 절감.
     // 한국어는 영어 대비 토큰 효율이 낮아 동일 줄 수에서 토큰을 더 많이 소모하므로,
     // 본문이 잘려 첫 줄만 남는 사고를 막기 위해 ko 일 때 50% 가량 여유를 더한다.
@@ -25,7 +25,7 @@ export const geminiProvider: CommitProvider = {
       contents: [
         {
           role: "user",
-          parts: [{ text: buildPrompt({ diff, language, strength }) }],
+          parts: [{ text: buildPrompt({ diff, language, strength, tone }) }],
         },
       ],
       generationConfig: {

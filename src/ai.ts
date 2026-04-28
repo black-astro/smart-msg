@@ -53,5 +53,7 @@ export async function generateCommitMessage(diff: string): Promise<string> {
     apiKey,
     language: config.language ?? "en",
     strength: config.strength ?? "simple",
+    // 톤 미설정 시 'report' (보고서/명사형) — 새 디폴트.
+    tone: config.tone ?? "report",
   });
 }

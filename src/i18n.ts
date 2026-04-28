@@ -76,6 +76,13 @@ export interface Messages {
   onFailureAbort: string;
   configChangedOnFailure: (v: string) => string;
 
+  configTargetTone: string;
+  configCurrentTone: (v: string) => string;
+  configChooseTone: string;
+  toneReport: string;
+  tonePolite: string;
+  configChangedTone: (v: string) => string;
+
   // hook 실패 안내 (msgFile 코멘트 + stderr).
   hookFailureCommentIntro: string;
   hookFailureCommentCause: (cause: string) => string;
@@ -150,6 +157,13 @@ const en: Messages = {
   onFailureAbort: "abort   - leave message empty so git aborts the commit",
   configChangedOnFailure: (v) => `on-failure changed to ${v}.`,
 
+  configTargetTone: "tone (Korean output ending style)",
+  configCurrentTone: (v) => `  tone     : ${v}`,
+  configChooseTone: "Choose Korean output tone (no effect on English)",
+  toneReport: "report - noun-form / informal (e.g. \"메뉴 항목 추가\")",
+  tonePolite: "polite - formal endings (e.g. \"~했습니다\", \"~합니다\")",
+  configChangedTone: (v) => `tone changed to ${v}.`,
+
   hookFailureCommentIntro: "smart-msg: AI message generation failed. Write manually here, or run `sm c` to retry.",
   hookFailureCommentCause: (cause) => `cause: ${cause}`,
 
@@ -221,6 +235,13 @@ const ko: Messages = {
   onFailureFallback: "fallback - 안내가 담긴 빈 템플릿으로 에디터 열기 (직접 작성)",
   onFailureAbort: "abort    - 메시지를 비워둬 git 이 commit 자체를 취소",
   configChangedOnFailure: (v) => `on-failure 가 ${v} 로 변경되었습니다.`,
+
+  configTargetTone: "tone (한국어 출력 종결 톤)",
+  configCurrentTone: (v) => `  tone     : ${v}`,
+  configChooseTone: "한국어 출력 톤을 선택합니다. (영어 출력에는 영향 없음)",
+  toneReport: "report - 명사형/음슴체 (예: \"메뉴 항목 추가\", \"엔드포인트 분리\")",
+  tonePolite: "polite - 정중체 (예: \"~했습니다\", \"~합니다\")",
+  configChangedTone: (v) => `tone 이 ${v} 로 변경되었습니다.`,
 
   hookFailureCommentIntro: "smart-msg: AI 메시지 자동 생성에 실패했습니다. 여기에 직접 작성하시거나 'sm c' 로 다시 시도하시기 바랍니다.",
   hookFailureCommentCause: (cause) => `원인: ${cause}`,

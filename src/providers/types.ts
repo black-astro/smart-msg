@@ -1,6 +1,6 @@
 // 모든 AI provider 가 따라야 할 공통 계약.
 // router(ai.ts) 는 이 인터페이스만 알고, 실제 구현체(openai.ts, claude.ts) 는 신경 안 씀.
-import type { Language, Strength } from "../config.js";
+import type { Language, Strength, Tone } from "../config.js";
 
 export interface GenerateParams {
   diff: string;
@@ -8,6 +8,7 @@ export interface GenerateParams {
   apiKey: string;
   language: Language;
   strength: Strength;
+  tone: Tone;
 }
 
 export interface CommitProvider {

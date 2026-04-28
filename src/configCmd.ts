@@ -1,7 +1,7 @@
 // `sm config` — 설치 이후 언어, 강도, 모델 변경. login 과 달리 키는 변경하지 않는다.
 // 표시 언어는 현재 저장된 cfg.language 를 따른다 (한국어 사용자 → 한국어, 그 외 → 영어).
 import prompts from "prompts";
-import { loadConfig, updateConfig, getConfigPath, type Language, type OnFailure } from "./config.js";
+import { loadConfig, updateConfig, getConfigPath, type Language, type OnFailure, type Tone } from "./config.js";
 import { RECOMMENDED_MODELS } from "./providers/types.js";
 import { pickLanguage, pickStrength } from "./login.js";
 import { t } from "./i18n.js";
@@ -25,6 +25,7 @@ export async function runConfig(): Promise<void> {
   console.log(m.configCurrentLanguage(cfg.language ?? "(not set)"));
   console.log(m.configCurrentStrength(cfg.strength ?? "(not set)"));
   console.log(m.configCurrentOnFailure(cfg.onFailure ?? "fallback"));
+  console.log(m.configCurrentTone(cfg.tone ?? "report"));
   console.log(m.configCurrentPath(getConfigPath()));
   console.log("");
 
@@ -36,6 +37,7 @@ export async function runConfig(): Promise<void> {
       { title: m.configTargetLanguage, value: "language" },
       { title: m.configTargetStrength, value: "strength" },
       { title: m.configTargetModel, value: "model" },
+      { title: m.configTargetTone, value: "tone" },
       { title: m.configTargetOnFailure, value: "onFailure" },
       { title: m.configTargetCancel, value: "cancel" },
     ],
@@ -61,6 +63,24 @@ export async function runConfig(): Promise<void> {
     if (!strength) return;
     await updateConfig({ strength });
     console.log(m.configChangedStrength(strength));
+    return;
+  }
+
+  if (target === "tone") {
+    const current: Tone = cfg.tone ?? "report";
+    const { tone } = await prompts({
+      type: "select",
+      name: "tone",
+      message: m.configChooseTone,
+      choices: [
+        { title: current === "report" ? `${m.toneReport}${m.currentMarker}` : m.toneReport, value: "report" },
+        { title: current === "polite" ? `${m.tonePolite}${m.currentMarker}` : m.tonePolite, value: "polite" },
+      ],
+      initial: current === "polite" ? 1 : 0,
+    });
+    if (!tone) return;
+    await updateConfig({ tone: tone as Tone });
+    console.log(m.configChangedTone(tone));
     return;
   }
 

@@ -15,7 +15,7 @@ const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 export const groqProvider: CommitProvider = {
   name: "groq",
 
-  async generate({ diff, model, apiKey, language, strength }) {
+  async generate({ diff, model, apiKey, language, strength, tone }) {
     // 한국어는 영어 대비 토큰 효율이 낮아 본문이 잘리지 않도록 1.5배 여유.
     const baseTokens =
       strength === "simple" ? 120 : strength === "middle" ? 500 : 1000;
@@ -24,7 +24,7 @@ export const groqProvider: CommitProvider = {
     const body = JSON.stringify({
       model,
       messages: [
-        { role: "user", content: buildPrompt({ diff, language, strength }) },
+        { role: "user", content: buildPrompt({ diff, language, strength, tone }) },
       ],
       max_tokens: maxTokens,
       temperature: 0.4,

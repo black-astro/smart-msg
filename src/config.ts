@@ -25,6 +25,12 @@ export type Strength = "simple" | "middle" | "hard";
 // 매번 묻지 않고 사용자가 미리 선택해두는 방식을 채택한다.
 export type OnFailure = "fallback" | "abort";
 
+// 한국어 출력 시 본문 종결 톤. 영어 출력에는 영향이 없다 (imperative 가 표준).
+//   report (기본): 명사형/음슴체. "메뉴 항목 추가", "엔드포인트 분리" — 기술 보고서 톤.
+//   polite       : 정중체. "~했습니다", "~합니다" — 격식 있는 글말 톤.
+// 새로운 사용자 + 기존 사용자(미설정) 모두 'report' 로 동작.
+export type Tone = "report" | "polite";
+
 // config 파일에 저장되는 전체 형태. 키는 provider 별로 따로 들고 있음
 // → 사용자가 둘 다 로그인해두고 provider 만 바꿔서 쓸 수 있게.
 export interface Config {
@@ -38,6 +44,8 @@ export interface Config {
   claudeApiKey?: string;
   // AI 호출 실패 시 hook 의 동작. 미설정 시 'fallback' (안전한 기본값).
   onFailure?: OnFailure;
+  // 한국어 출력 톤. 미설정 시 'report' (보고서 톤).
+  tone?: Tone;
   // 프로젝트 단위로 깔아준 git hook 경로 목록. uninstall 시 자동 제거하려고 추적.
   installedHooks?: string[];
   // 글로벌 hook (core.hooksPath) 설치 여부. uninstall 시 정리 대상 식별용.
