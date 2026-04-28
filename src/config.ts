@@ -26,8 +26,12 @@ export interface Config {
   strength: Strength;
   openaiApiKey?: string;
   claudeApiKey?: string;
-  // 우리가 깔아준 git hook 경로 목록. uninstall 시 자동 제거하려고 추적.
+  // 프로젝트 단위로 깔아준 git hook 경로 목록. uninstall 시 자동 제거하려고 추적.
   installedHooks?: string[];
+  // 글로벌 hook (core.hooksPath) 설치 여부. uninstall 시 정리 대상 식별용.
+  globalHookInstalled?: boolean;
+  // 글로벌 hook 설치 직전의 core.hooksPath 값. uninstall 시 복원하기 위해 보관.
+  previousGlobalHooksPath?: string;
 }
 
 // 파일 경로는 한 곳에서만 계산. 다른 곳에서 직접 경로 만들지 않게 export.

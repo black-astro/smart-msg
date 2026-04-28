@@ -3,6 +3,7 @@
 import prompts from "prompts";
 import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
+import { execa } from "execa";
 import {
   loadConfig,
   saveConfig,
@@ -50,7 +51,7 @@ export async function runUninstall(): Promise<void> {
 
   const cfg = await loadConfig();
 
-  // 1) hook 파일을 제거한다. config 에 기록되지 않았을 가능성을 고려하여 옵셔널 처리한다.
+  // 1) 프로젝트 단위 hook 파일을 제거한다.
   const hookPaths = cfg?.installedHooks ?? [];
   let removedHooks = 0;
   for (const hookPath of hookPaths) {
@@ -60,15 +61,36 @@ export async function runUninstall(): Promise<void> {
     }
   }
 
-  // 2) 설정 디렉토리를 통째로 제거한다. API 키의 완전한 삭제를 보장한다.
+  // 2) 글로벌 hook (core.hooksPath) 정리. 설치 직전 값이 있으면 복원, 없으면 unset.
+  let restoredGlobal = false;
+  if (cfg?.globalHookInstalled) {
+    try {
+      if (cfg.previousGlobalHooksPath) {
+        await execa("git", [
+          "config",
+          "--global",
+          "core.hooksPath",
+          cfg.previousGlobalHooksPath,
+        ]);
+      } else {
+        await execa("git", ["config", "--global", "--unset", "core.hooksPath"]);
+      }
+      restoredGlobal = true;
+    } catch {
+      // 이미 unset 인 경우 git 이 비정상 코드를 반환할 수 있으나 정상 흐름이다.
+    }
+  }
+
+  // 3) 설정 디렉토리를 통째로 제거한다. API 키의 완전한 삭제를 보장한다.
   const configDir = getConfigDir();
   const removedConfig = await removeConfigDir();
 
-  // 3) 결과 리포트와 마지막 단계를 안내한다.
+  // 4) 결과 리포트와 마지막 단계를 안내한다.
   console.log("\n정리 결과:");
   if (removedConfig) console.log(`  - 설정 폴더 제거: ${configDir}`);
-  if (removedHooks > 0) console.log(`  - git hook ${removedHooks} 개 제거`);
-  if (!removedConfig && removedHooks === 0) {
+  if (removedHooks > 0) console.log(`  - 프로젝트 git hook ${removedHooks} 개 제거`);
+  if (restoredGlobal) console.log(`  - 글로벌 git hooksPath 정리`);
+  if (!removedConfig && removedHooks === 0 && !restoredGlobal) {
     console.log("  (제거할 항목이 없습니다.)");
   }
 

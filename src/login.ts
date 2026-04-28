@@ -1,8 +1,6 @@
 // `sm login` 의 동작을 정의한다. AI provider, 모델, 언어, 강도를 묻고, 브라우저로 키 발급 페이지를 열어 키를 등록한다.
 import prompts from "prompts";
 import open from "open";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import {
   updateConfig,
   type Provider,
@@ -10,7 +8,7 @@ import {
   type Strength,
 } from "./config.js";
 import { RECOMMENDED_MODELS } from "./providers/types.js";
-import { runInstallHook } from "./installHook.js";
+import { runInstallHookGlobal } from "./installHook.js";
 
 // provider 별 키 발급 URL. 사용자의 클릭 및 복사 부담을 줄이기 위해 자동으로 페이지를 연다.
 const KEY_PAGE_URL: Record<Provider, string> = {
@@ -128,28 +126,32 @@ export async function runLogin(): Promise<void> {
 
   await updateConfig(patch);
 
-  console.log(`\n설정이 완료되었습니다. 어떤 프로젝트에서든 \`sm c\` 명령으로 커밋 메시지를 생성할 수 있습니다.`);
-  console.log(`설정 변경은 \`sm config\` 명령으로 수행합니다.`);
+  console.log(`\n계정 설정이 완료되었습니다.`);
 
-  // 7) 현재 폴더가 git 저장소인 경우, IDE 통합을 원하는 사용자를 위해 hook 설치를 제안한다.
-  //    이 흐름이 있어야 사용자가 별도로 install-hook 을 기억하고 실행할 필요가 없다.
-  const isGitRepo = existsSync(join(process.cwd(), ".git"));
-  if (isGitRepo) {
-    console.log("");
-    const { wantHook } = await prompts({
-      type: "confirm",
-      name: "wantHook",
-      message:
-        "현재 폴더가 git 저장소입니다. 이 프로젝트에 prepare-commit-msg hook 도 설치하시겠습니까? (IntelliJ 등 IDE 커밋 창에서 자동 메시지가 동작합니다.)",
-      initial: true,
-    });
-    if (wantHook) {
-      await runInstallHook();
-    } else {
-      console.log("hook 설치는 건너뛰었습니다. 추후 `sm install-hook` 으로 설치 가능합니다.");
+  // 7) 글로벌 hook 자동 설치. 한 번만 동의받으면 모든 git 저장소에서 자동으로 동작한다.
+  //    사용자가 매 프로젝트마다 install-hook 을 수동 실행할 필요가 없어진다.
+  console.log("");
+  console.log("이제 모든 git 저장소에서 'git commit' 만으로 자동 메시지 생성을 사용할 수 있도록");
+  console.log("글로벌 git hook 을 설치합니다. 이 설정은 사용자 환경 전체에 한 번만 적용됩니다.");
+  const { wantGlobal } = await prompts({
+    type: "confirm",
+    name: "wantGlobal",
+    message: "글로벌 hook 을 설치하시겠습니까?",
+    initial: true,
+  });
+
+  if (wantGlobal) {
+    const installed = await runInstallHookGlobal();
+    if (installed) {
+      console.log("\n설치가 완료되었습니다. 어떤 git 저장소에서든 다음 명령만으로 자동 메시지가 생성됩니다.");
+      console.log("");
+      console.log("  git add .");
+      console.log("  git commit");
+      console.log("");
+      console.log("설정 변경은 `sm config` 명령으로 수행합니다.");
     }
   } else {
-    console.log("");
-    console.log("팁: 프로젝트 루트에서 `sm install-hook` 을 실행하면 IDE 커밋 창에서도 자동 메시지가 동작합니다.");
+    console.log("\n글로벌 hook 설치를 건너뛰었습니다.");
+    console.log("명령줄에서 `sm c` 로 사용하시거나, 추후 `sm login` 을 다시 실행하여 설정할 수 있습니다.");
   }
 }
