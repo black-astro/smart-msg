@@ -198,6 +198,11 @@ export interface Messages {
   // sm split.
   splitHeader: string;
   splitFooterHint: string;
+  splitLocalHeader: string;
+  splitLocalNoSplit: string;
+  splitAiHeader: string;
+  splitAiSkipped: string;
+  splitAiFailed: (msg: string) => string;
 
   // 선택 메뉴에서 현재 설정값 옆에 붙이는 마커.
   currentMarker: string;
@@ -381,6 +386,11 @@ const en: Messages = {
 
   splitHeader: "Suggested commit split:",
   splitFooterHint: "Follow the steps above with 'git reset HEAD <file>' + 'git add <file>' per group, then 'sm c'.",
+  splitLocalHeader: "Local split proposal (heuristic, no LLM):",
+  splitLocalNoSplit: "Single semantic group — no split needed.",
+  splitAiHeader: "AI split proposal (LLM):",
+  splitAiSkipped: "(AI proposal skipped — --no-ai)",
+  splitAiFailed: (msg) => `AI proposal failed: ${msg}`,
 
   currentMarker: "  ★ (current)",
 };
@@ -563,6 +573,11 @@ const ko: Messages = {
 
   splitHeader: "분할 commit 제안:",
   splitFooterHint: "위 안내에 따라 그룹별로 'git reset HEAD <file>' + 'git add <file>' 수행 후 'sm c' 로 commit 하시기 바랍니다.",
+  splitLocalHeader: "로컬 분할 제안 (LLM 없이 휴리스틱):",
+  splitLocalNoSplit: "단일 의미 묶음 — 분할 불필요.",
+  splitAiHeader: "AI 분할 제안 (LLM):",
+  splitAiSkipped: "(AI 제안 건너뜀 — --no-ai)",
+  splitAiFailed: (msg) => `AI 제안 실패: ${msg}`,
 
   currentMarker: "  ★ (현재 설정)",
 };
