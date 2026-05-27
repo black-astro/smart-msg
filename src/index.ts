@@ -116,6 +116,7 @@ program
       console.log(`intent   : ${cfg.captureIntent ?? "ask"}`);
       console.log(`risk     : ${cfg.riskCheck ?? "warn"}`);
       console.log(`revert   : ${cfg.revertCheck ?? "on"}`);
+      console.log(`privacy  : ${cfg.privacyMode ?? "standard"}`);
       console.log(`config   : ${getConfigPath()}`);
     } else {
       console.log("Not logged in. Run `sm login` to set up.");

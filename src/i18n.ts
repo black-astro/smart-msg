@@ -184,6 +184,15 @@ export interface Messages {
   styleShowHeader: (path: string, when: string) => string;
   styleCleared: (path: string) => string;
 
+  // P6 — privacy tokenizer.
+  configTargetPrivacyMode: string;
+  configCurrentPrivacyMode: (v: string) => string;
+  configChoosePrivacyMode: string;
+  privacyModeOff: string;
+  privacyModeStandard: string;
+  privacyModeStrict: string;
+  configChangedPrivacyMode: (v: string) => string;
+
   // sm amend.
   amendNoLastDiff: string;
   amendGeneratedHeader: string;
@@ -375,6 +384,14 @@ const en: Messages = {
   styleShowHeader: (path, when) => `Style file: ${path}\nAnalyzed at: ${when}`,
   styleCleared: (path) => `Removed ${path}`,
 
+  configTargetPrivacyMode: "privacyMode (tokenize PII before sending diff to LLM)",
+  configCurrentPrivacyMode: (v) => `  privacy  : ${v}`,
+  configChoosePrivacyMode: "How aggressively should PII be tokenized?",
+  privacyModeOff:      "off      - no PII tokenization (secret masking is still on)",
+  privacyModeStandard: "standard - email/JWT/UUID/IP/CC/phone/auth-URL (default)",
+  privacyModeStrict:   "strict   - standard + all URLs + Bearer tokens",
+  configChangedPrivacyMode: (v) => `privacyMode changed to ${v}.`,
+
   amendNoLastDiff: "No diff found for the last commit (root commit or merge). Aborted.",
   amendGeneratedHeader: "Generated commit message (for amend):",
   amendChoicePrompt: "Amend last commit with this message?",
@@ -561,6 +578,14 @@ const ko: Messages = {
   styleNotLearned: "이 저장소의 스타일이 아직 학습되지 않았습니다. `sm style learn` 으로 학습하세요.",
   styleShowHeader: (path, when) => `스타일 파일: ${path}\n분석 시각: ${when}`,
   styleCleared: (path) => `삭제 완료: ${path}`,
+
+  configTargetPrivacyMode: "privacyMode (diff 를 LLM 으로 보내기 전 PII 토큰화)",
+  configCurrentPrivacyMode: (v) => `  privacy  : ${v}`,
+  configChoosePrivacyMode: "PII 를 얼마나 적극적으로 토큰화할까요?",
+  privacyModeOff:      "off      - 토큰화 안 함 (단, secret 마스킹은 항상 동작)",
+  privacyModeStandard: "standard - email/JWT/UUID/IP/CC/phone/auth-URL (기본)",
+  privacyModeStrict:   "strict   - standard + 일반 URL + Bearer 토큰까지",
+  configChangedPrivacyMode: (v) => `privacyMode 가 ${v} 로 변경되었습니다.`,
 
   amendNoLastDiff: "마지막 commit 의 diff 가 비어있습니다 (root commit / merge). 중단합니다.",
   amendGeneratedHeader: "생성된 커밋 메시지 (amend 용):",

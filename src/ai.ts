@@ -55,8 +55,10 @@ export async function generateCommitMessage(
   // 실패는 silent — 스타일 없이도 생성은 정상 진행.
   const styleHint = mode === "commit" ? await loadStyleHint(verbose) : undefined;
 
+  const privacyMode = config.privacyMode ?? "standard";
+
   try {
-    const primary = await callProvider(config, config.provider, diff, branch, mode, verbose, intent, styleHint);
+    const primary = await callProvider(config, config.provider, diff, branch, mode, verbose, intent, styleHint, privacyMode);
     return appendIssueFooter(primary, config, branch);
   } catch (e) {
     const primaryErr = e as Error;
@@ -64,7 +66,7 @@ export async function generateCommitMessage(
     if (fb && fb !== config.provider && hasKeyFor(config, fb)) {
       if (verbose) console.error(`[sm verbose] primary ${config.provider} failed (${primaryErr.message}); falling back to ${fb}`);
       try {
-        const fallbackOut = await callProvider(config, fb, diff, branch, mode, verbose, intent, styleHint);
+        const fallbackOut = await callProvider(config, fb, diff, branch, mode, verbose, intent, styleHint, privacyMode);
         return appendIssueFooter(fallbackOut, config, branch);
       } catch (e2) {
         const secondErr = e2 as Error;
@@ -107,6 +109,7 @@ async function callProvider(
   verbose: boolean,
   intent: string | undefined,
   styleHint: string | undefined,
+  privacyMode: "off" | "standard" | "strict",
 ): Promise<string> {
   const provider = PROVIDERS[providerId];
   if (!provider) {
@@ -148,6 +151,7 @@ async function callProvider(
     verbose,
     intent,
     styleHint,
+    privacyMode,
   });
 }
 
