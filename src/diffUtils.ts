@@ -92,23 +92,39 @@ function splitByFile(diff: string): string[] {
   return out;
 }
 
-// 두 단계 적용: 먼저 secret 마스킹, 다음 길이 축약.
-// 마스킹을 먼저 해야 [REDACTED] 가 잘려나가 secret 일부가 노출되는 사고가 없다.
+// 세 단계 적용: secret 마스킹 → PII 토큰화 → 길이 축약.
+// 순서가 중요:
+//   1) 마스킹 먼저 — secret 일부가 토큰화로 일부만 가려지는 사고 없게.
+//   2) 토큰화 다음 — [REDACTED] 자체는 토큰화 대상 아니므로 안전.
+//   3) 축약 마지막 — 토큰이 잘려 의미가 깨지는 일을 줄임.
+import { tokenizePII, type PrivacyMode } from "./privacyTokenizer.js";
+
 export interface PreparedDiff {
   text: string;
   originalLength: number;
   truncated: boolean;
   masked: boolean;
+  // PII 토큰화 횟수 (카테고리별 합).
+  piiTokenized: number;
+  // 카테고리별 횟수 — 사용자 안내용.
+  piiCounts: Record<string, number>;
 }
 
-export function prepareDiff(rawDiff: string, limit: number): PreparedDiff {
+export function prepareDiff(rawDiff: string, limit: number, privacyMode: PrivacyMode = "standard"): PreparedDiff {
   const masked = maskSecrets(rawDiff);
   const wasMasked = masked !== rawDiff;
-  const condensed = condenseDiff(masked, limit);
+
+  const pii = tokenizePII(masked, privacyMode);
+  const tokenized = pii.text;
+  const piiTokenized = Object.values(pii.counts).reduce((a, b) => a + b, 0);
+
+  const condensed = condenseDiff(tokenized, limit);
   return {
     text: condensed,
     originalLength: rawDiff.length,
-    truncated: condensed.length < masked.length,
+    truncated: condensed.length < tokenized.length,
     masked: wasMasked,
+    piiTokenized,
+    piiCounts: pii.counts,
   };
 }

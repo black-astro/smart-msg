@@ -10,6 +10,9 @@ import {
   type Tone,
   type Provider,
   type CaptureIntent,
+  type RiskCheck,
+  type RevertCheck,
+  type PrivacyMode,
 } from "./config.js";
 import { RECOMMENDED_MODELS } from "./providers/types.js";
 import { pickLanguage, pickStrength } from "./login.js";
@@ -38,6 +41,9 @@ export async function runConfig(): Promise<void> {
   console.log(m.configCurrentFallback(cfg.fallbackProvider ?? "(none)"));
   console.log(m.configCurrentVerbose(cfg.verbose ? "on" : "off"));
   console.log(m.configCurrentCaptureIntent(cfg.captureIntent ?? "ask"));
+  console.log(m.configCurrentRiskCheck(cfg.riskCheck ?? "warn"));
+  console.log(m.configCurrentRevertCheck(cfg.revertCheck ?? "on"));
+  console.log(m.configCurrentPrivacyMode(cfg.privacyMode ?? "standard"));
   console.log(m.configCurrentPath(getConfigPath()));
   console.log("");
 
@@ -56,6 +62,9 @@ export async function runConfig(): Promise<void> {
       { title: m.configTargetOnFailure, value: "onFailure" },
       { title: m.configTargetVerbose, value: "verbose" },
       { title: m.configTargetCaptureIntent, value: "captureIntent" },
+      { title: m.configTargetRiskCheck, value: "riskCheck" },
+      { title: m.configTargetRevertCheck, value: "revertCheck" },
+      { title: m.configTargetPrivacyMode, value: "privacyMode" },
       { title: m.configTargetBaseUrl, value: "baseUrl" },
       { title: m.configTargetCancel, value: "cancel" },
     ],
@@ -245,6 +254,62 @@ export async function runConfig(): Promise<void> {
     if (!v) return;
     await updateConfig({ captureIntent: v as CaptureIntent });
     console.log(m.configChangedCaptureIntent(v));
+    return;
+  }
+
+  if (target === "riskCheck") {
+    const current: RiskCheck = cfg.riskCheck ?? "warn";
+    const { v } = await prompts({
+      type: "select",
+      name: "v",
+      message: m.configChooseRiskCheck,
+      choices: [
+        { title: current === "warn" ? `${m.riskCheckWarn}${m.currentMarker}` : m.riskCheckWarn, value: "warn" },
+        { title: current === "on"   ? `${m.riskCheckOn}${m.currentMarker}`   : m.riskCheckOn,   value: "on"   },
+        { title: current === "off"  ? `${m.riskCheckOff}${m.currentMarker}`  : m.riskCheckOff,  value: "off"  },
+      ],
+      initial: current === "on" ? 1 : current === "off" ? 2 : 0,
+    });
+    if (!v) return;
+    await updateConfig({ riskCheck: v as RiskCheck });
+    console.log(m.configChangedRiskCheck(v));
+    return;
+  }
+
+  if (target === "revertCheck") {
+    const current: RevertCheck = cfg.revertCheck ?? "on";
+    const { v } = await prompts({
+      type: "select",
+      name: "v",
+      message: m.configChooseRevertCheck,
+      choices: [
+        { title: current === "on"  ? `${m.revertCheckOn}${m.currentMarker}`  : m.revertCheckOn,  value: "on"  },
+        { title: current === "off" ? `${m.revertCheckOff}${m.currentMarker}` : m.revertCheckOff, value: "off" },
+      ],
+      initial: current === "off" ? 1 : 0,
+    });
+    if (!v) return;
+    await updateConfig({ revertCheck: v as RevertCheck });
+    console.log(m.configChangedRevertCheck(v));
+    return;
+  }
+
+  if (target === "privacyMode") {
+    const current: PrivacyMode = cfg.privacyMode ?? "standard";
+    const { v } = await prompts({
+      type: "select",
+      name: "v",
+      message: m.configChoosePrivacyMode,
+      choices: [
+        { title: current === "off"      ? `${m.privacyModeOff}${m.currentMarker}`      : m.privacyModeOff,      value: "off"      },
+        { title: current === "standard" ? `${m.privacyModeStandard}${m.currentMarker}` : m.privacyModeStandard, value: "standard" },
+        { title: current === "strict"   ? `${m.privacyModeStrict}${m.currentMarker}`   : m.privacyModeStrict,   value: "strict"   },
+      ],
+      initial: current === "off" ? 0 : current === "strict" ? 2 : 1,
+    });
+    if (!v) return;
+    await updateConfig({ privacyMode: v as PrivacyMode });
+    console.log(m.configChangedPrivacyMode(v));
     return;
   }
 

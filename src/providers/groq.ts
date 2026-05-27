@@ -15,13 +15,13 @@ const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 export const groqProvider: CommitProvider = {
   name: "groq",
 
-  async generate({ diff, model, apiKey, language, strength, tone, gitmoji, branch, mode, verbose, intent }) {
+  async generate({ diff, model, apiKey, language, strength, tone, gitmoji, branch, mode, verbose, intent, styleHint, privacyMode }) {
     // 한국어는 영어 대비 토큰 효율이 낮아 본문이 잘리지 않도록 1.5배 여유.
     const baseTokens =
       strength === "simple" ? 120 : strength === "middle" ? 500 : 1000;
     const maxTokens = language === "ko" ? Math.round(baseTokens * 1.5) : baseTokens;
 
-    const prompt = buildPrompt({ diff, language, strength, tone, gitmoji, branch, mode, intent });
+    const prompt = buildPrompt({ diff, language, strength, tone, gitmoji, branch, mode, intent, styleHint, privacyMode });
     if (verbose) console.error(`[sm verbose] groq prompt:\n${prompt}\n---`);
 
     const body = JSON.stringify({

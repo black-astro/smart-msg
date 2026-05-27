@@ -6,6 +6,7 @@ import { prepareDiff } from "../diffUtils.js";
 // diff 가 너무 길면 토큰비 폭증 → 앞부분만 사용. 8000 자도 보통 충분.
 // 큰 PR/feature 변경에서는 diffUtils.condenseDiff 가 파일별로 앞부분을 분할 채택한다.
 const DIFF_LIMIT = 8000;
+import type { PrivacyMode } from "../privacyTokenizer.js";
 
 // 강도별 출력 형식 지시문. 모델한테 분명한 형태를 알려주는 게 결과 일관성 핵심.
 // middle/hard 는 작은 변경에서도 모델이 본문을 생략하지 않도록 "본문 생략은 잘못된 응답" 을 명시한다.
@@ -84,6 +85,11 @@ export interface PromptOptions {
   // 본문의 동기(motivation) 부분을 정확히 작성하도록 가이드한다.
   // 미설정/빈 문자열이면 의도 블록을 생략한다.
   intent?: string;
+  // 학습된 repo style 의 사람-읽기 가능한 요약 (formatStyleForPrompt 출력).
+  // 있으면 prompt 에 별도 블록으로 주입한다.
+  styleHint?: string;
+  // PII 토큰화 모드. 미설정 시 'standard' (diffUtils.prepareDiff 의 기본값).
+  privacyMode?: PrivacyMode;
 }
 
 export function buildPrompt({
@@ -95,8 +101,10 @@ export function buildPrompt({
   branch,
   mode = "commit",
   intent,
+  styleHint,
+  privacyMode,
 }: PromptOptions): string {
-  const prepared = prepareDiff(diff, DIFF_LIMIT);
+  const prepared = prepareDiff(diff, DIFF_LIMIT, privacyMode ?? "standard");
 
   if (mode === "pr") {
     return buildPrPrompt({ diff: prepared.text, language, branch });
@@ -117,6 +125,8 @@ export function buildPrompt({
 
   const intentBlock = buildIntentBlock(intent, strength);
 
+  const styleBlock = buildStyleBlock(styleHint);
+
   const noticeBlock = buildNoticeBlock(prepared);
 
   return `너는 senior software engineer야.
@@ -128,7 +138,7 @@ export function buildPrompt({
 - 메시지 외 다른 텍스트(설명, 코드블록 표시 등) 절대 금지
 
 ${LANGUAGE_INSTRUCTIONS[language]}
-${toneBlock}${gitmojiBlock}${branchBlock}${intentBlock}출력 형식:
+${toneBlock}${gitmojiBlock}${branchBlock}${intentBlock}${styleBlock}출력 형식:
 ${STRENGTH_INSTRUCTIONS[strength]}
 ${noticeBlock}
 git diff:
@@ -153,6 +163,13 @@ function buildIntentBlock(intent: string | undefined, strength: Strength): strin
   return `\n사용자 의도 (이번 변경의 \"왜\"):\n- "${trimmed}"\n${guidance}\n`;
 }
 
+// 학습된 repo style 블록.
+// styleHint 가 비어있거나 undefined 이면 블록 자체 생성 안 함.
+function buildStyleBlock(styleHint: string | undefined): string {
+  if (!styleHint) return "";
+  return `\n${styleHint}\n`;
+}
+
 function buildBranchBlock(branch?: BranchContext): string {
   if (!branch?.name && !branch?.issueKey) return "";
   const parts: string[] = ["\n브랜치 컨텍스트:"];
@@ -161,9 +178,12 @@ function buildBranchBlock(branch?: BranchContext): string {
   return `${parts.join("\n")}\n`;
 }
 
-function buildNoticeBlock(prepared: { masked: boolean; truncated: boolean }): string {
+function buildNoticeBlock(prepared: { masked: boolean; truncated: boolean; piiTokenized?: number }): string {
   const lines: string[] = [];
   if (prepared.masked) lines.push("- 일부 라인은 [REDACTED] 로 치환되어 있습니다 (민감정보 마스킹). 마스킹된 값에 대한 추측은 하지 마세요.");
+  if (prepared.piiTokenized && prepared.piiTokenized > 0) {
+    lines.push("- 일부 식별자가 <EMAIL_N> / <URL_AUTH_N> / <UUID_N> / <IP_N> / <CC_N> / <PHONE_N> / <JWT_N> / <BEARER_N> / <URL_N> 형태의 토큰으로 치환되어 있습니다. 토큰을 원본처럼 추측하지 말고, 본문에서 필요하면 그대로 토큰을 사용하세요.");
+  }
   if (prepared.truncated) lines.push("- 본 diff 는 길이 제한으로 일부가 축약되었습니다.");
   if (lines.length === 0) return "";
   return `\n주의:\n${lines.join("\n")}\n`;

@@ -25,6 +25,10 @@ export interface GenerateParams {
   // 사용자가 입력한 "이번 변경의 의도/이유" 한 줄. router → provider → buildPrompt 로 그대로 전달된다.
   // 빈 문자열/undefined 면 의도 블록은 생성되지 않는다.
   intent?: string;
+  // 학습된 repo style 의 사람-읽기 가능한 요약. 있으면 prompt 에 별도 블록으로 주입된다.
+  styleHint?: string;
+  // PII 토큰화 모드. router → provider → buildPrompt 그대로 전달. 미설정 시 'standard'.
+  privacyMode?: "off" | "standard" | "strict";
 }
 
 export interface CommitProvider {

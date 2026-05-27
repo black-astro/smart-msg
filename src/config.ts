@@ -39,6 +39,25 @@ export type Tone = "report" | "polite";
 // non-TTY (hook, pipe, CI) 환경에서는 ask/always 라도 prompt 가 동작하지 않으므로 SM_INTENT env 만 참조한다.
 export type CaptureIntent = "ask" | "always" | "never";
 
+// `sm c` 가 commit 직전에 변경의 위험도를 평가하고 어떻게 대응할지.
+//   warn (기본): 평가 후 점수와 사유를 보여주고, 점수 4 이상 + 위험 시간대일 때만 confirm. 그 외엔 안내만.
+//   on        : 점수 4 이상이면 항상 confirm (시간대 무관).
+//   off       : 평가 자체 수행 안 함.
+// 위험 시간대(주말/금요일 늦은 시각/야간) 는 점수와 별도로 추가 경고로 표시된다.
+export type RiskCheck = "warn" | "on" | "off";
+
+// 최근 N 개 commit 을 스캔해서 staged 변경이 그것을 (부분) 되돌리는지 감지.
+//   on (기본): 감지되면 안내만. commit 자체는 막지 않는다.
+//   off      : 감지 안 함.
+// false-positive 가 발생할 수 있는 영역이라 기본은 비차단성 안내로 둔다.
+export type RevertCheck = "on" | "off";
+
+// diff 를 LLM 으로 보내기 전 PII 토큰화 모드.
+//   off       : 토큰화 안 함. (단, secret 마스킹은 항상 동작)
+//   standard  : 보편적 식별자 (email/JWT/UUID/IP/CC/phone/auth-URL) 토큰화. 기본.
+//   strict    : standard + 일반 URL / Bearer auth 까지.
+export type PrivacyMode = "off" | "standard" | "strict";
+
 // config 파일에 저장되는 전체 형태. 키는 provider 별로 따로 들고 있음
 // → 사용자가 둘 다 로그인해두고 provider 만 바꿔서 쓸 수 있게.
 export interface Config {
@@ -86,6 +105,19 @@ export interface Config {
   // `sm c` 의도 입력 모드. 미설정 시 'ask'.
   // 자세한 의미는 위 CaptureIntent 정의 참조.
   captureIntent?: CaptureIntent;
+
+  // `sm c` 위험도 평가 모드. 미설정 시 'warn'.
+  // 자세한 의미는 위 RiskCheck 정의 참조.
+  riskCheck?: RiskCheck;
+
+  // 최근 commit 대비 revert 감지 모드. 미설정 시 'on'.
+  revertCheck?: RevertCheck;
+  // 스캔할 commit 개수. 미설정 시 20.
+  revertLookback?: number;
+
+  // PII 토큰화 모드. 미설정 시 'standard'.
+  // 자세한 의미는 위 PrivacyMode 정의 참조.
+  privacyMode?: PrivacyMode;
 }
 
 // 파일 경로는 한 곳에서만 계산. 다른 곳에서 직접 경로 만들지 않게 export.

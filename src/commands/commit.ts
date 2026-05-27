@@ -14,9 +14,16 @@
 import { getStagedDiff, commit } from "../git.js";
 import { generateCommitMessage } from "../ai.js";
 import { loadConfig } from "../config.js";
-import { askChoice, askText } from "../cliPrompt.js";
+import { askChoice, askText, askYesNo } from "../cliPrompt.js";
 import { editText } from "../editorEdit.js";
 import { t } from "../i18n.js";
+import { assessRisk, collectRiskFactors, formatRiskBar } from "../riskScore.js";
+import {
+  detectReverts,
+  getRecentCommitsWithPatches,
+  parseUnifiedDiff,
+  summarizeHits,
+} from "../revertDetector.js";
 
 export interface CommitOptions {
   dryRun?: boolean;
@@ -25,6 +32,10 @@ export interface CommitOptions {
   intent?: string;
   // --no-intent 플래그. true 면 prompt 단계를 강제로 건너뛴다 (captureIntent=always 도 무시).
   noIntent?: boolean;
+  // --skip-risk 플래그. true 면 위험도 평가 자체를 건너뛴다 (config.riskCheck=off 와 동등).
+  skipRisk?: boolean;
+  // --skip-revert 플래그. true 면 revert 감지 자체를 건너뛴다 (config.revertCheck=off 와 동등).
+  skipRevert?: boolean;
 }
 
 export async function runCommit(opts: CommitOptions = {}): Promise<void> {
@@ -46,6 +57,9 @@ export async function runCommit(opts: CommitOptions = {}): Promise<void> {
     return;
   }
 
+  // revert 감지 — 한 번만 수행하고 재생성 루프에서 재출력. git 비용은 commit 한 번당 한 번만.
+  const revertLines = await computeRevertWarnings(opts, cfg?.revertCheck ?? "on", cfg?.revertLookback ?? 20, diff, lang);
+
   // 사용자가 'r' 로 재생성을 원할 수 있어 루프.
   let message = "";
   for (let i = 0; i < 5; i++) {
@@ -59,6 +73,11 @@ export async function runCommit(opts: CommitOptions = {}): Promise<void> {
     console.log(`\n${m.generatedMessageHeader}`);
     console.log(message);
     console.log("");
+
+    if (revertLines.length > 0) {
+      for (const line of revertLines) console.log(line);
+      console.log("");
+    }
 
     if (opts.dryRun) {
       console.log(m.dryRunFinished);
@@ -83,6 +102,9 @@ export async function runCommit(opts: CommitOptions = {}): Promise<void> {
     }
 
     if (choice === "y") {
+      if (!(await passesRiskGate(opts, cfg?.riskCheck ?? "warn", lang))) {
+        return;
+      }
       await commit(message);
       return;
     }
@@ -91,6 +113,9 @@ export async function runCommit(opts: CommitOptions = {}): Promise<void> {
       const edited = await editText(message, ".gitcommit");
       if (!edited) {
         console.log(m.cancelled);
+        return;
+      }
+      if (!(await passesRiskGate(opts, cfg?.riskCheck ?? "warn", lang))) {
         return;
       }
       await commit(edited);
@@ -102,6 +127,90 @@ export async function runCommit(opts: CommitOptions = {}): Promise<void> {
   }
 
   console.log(m.regenLimitReached);
+}
+
+// commit 직전 위험도 평가 + (필요 시) 사용자 confirm.
+// 반환값: true 면 진행, false 면 사용자 취소.
+async function passesRiskGate(
+  opts: CommitOptions,
+  mode: "warn" | "on" | "off",
+  lang: "ko" | "en",
+): Promise<boolean> {
+  const m = t(lang);
+
+  if (mode === "off" || opts.skipRisk) {
+    if (opts.skipRisk) console.log(m.riskSkipped);
+    return true;
+  }
+
+  // 점수 산정. git 호출이 실패해도 commit 자체는 막지 않는다 (network 없는 가벼운 fail-safe).
+  let assessment;
+  try {
+    const factors = await collectRiskFactors();
+    assessment = assessRisk(factors);
+  } catch {
+    return true;
+  }
+
+  const isHigh = assessment.score >= 4;
+  const isTimeDanger = assessment.isDangerousTime;
+
+  // mode=warn: 점수 4+ AND 위험 시간대일 때만 confirm. 그 외엔 안내만.
+  // mode=on  : 점수 4+ 면 항상 confirm.
+  const requiresConfirm =
+    mode === "on" ? isHigh : isHigh && isTimeDanger;
+
+  // 위험 요소가 있거나 시간대가 위험할 때만 출력 (스팸 방지).
+  // 점수 1-3 이고 시간대도 안전하면 사용자에게 굳이 보이지 않는다.
+  if (isHigh || isTimeDanger) {
+    console.log(`\n${m.riskHeader}`);
+    console.log(m.riskScoreLine(formatRiskBar(assessment.score)));
+    for (const r of assessment.reasons) console.log(m.riskReasonLine(r));
+    if (isTimeDanger) console.log(m.riskTimeWarning(assessment.timeWarnings.join(", ")));
+    console.log("");
+  }
+
+  if (!requiresConfirm) return true;
+
+  // non-TTY 면 prompt 불가 → mode=on 이라도 통과 (hook 등 자동화 경로 차단 방지).
+  // 자동화 환경에서 강제 차단을 원하면 호출자가 환경에 맞게 --skip-risk 든 분기든 두면 됨.
+  if (!process.stdin.isTTY) return true;
+
+  const ok = await askYesNo(m.riskHighConfirm, false, lang);
+  if (ok !== true) {
+    console.log(m.riskBlocked);
+    return false;
+  }
+  return true;
+}
+
+// revert 감지 결과를 사용자에게 보여줄 라인들로 변환.
+// 빈 배열이면 출력할 게 없다는 뜻 (감지 결과 자체가 없거나 모드 off).
+// git 호출 실패는 silent — commit 자체는 막지 않는다.
+async function computeRevertWarnings(
+  opts: CommitOptions,
+  mode: "on" | "off",
+  lookback: number,
+  stagedDiff: string,
+  lang: "ko" | "en",
+): Promise<string[]> {
+  const m = t(lang);
+
+  if (mode === "off" || opts.skipRevert) {
+    if (opts.skipRevert) console.log(m.revertSkipped);
+    return [];
+  }
+
+  try {
+    const staged = parseUnifiedDiff(stagedDiff);
+    const recent = await getRecentCommitsWithPatches(Math.max(1, Math.min(100, lookback)));
+    const hits = detectReverts(staged, recent);
+    if (hits.length === 0) return [];
+    const summary = summarizeHits(hits);
+    return [m.revertHeader(hits.length), ...summary];
+  } catch {
+    return [];
+  }
 }
 
 // 의도 입력 해결.

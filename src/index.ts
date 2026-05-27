@@ -20,6 +20,12 @@ import { runCommit } from "./commands/commit.js";
 import { runPr } from "./commands/pr.js";
 import { runAmend } from "./commands/amend.js";
 import { runSplit } from "./commands/split.js";
+import {
+  runStyleClear,
+  runStyleLearn,
+  runStyleShow,
+} from "./commands/style.js";
+import { runVoice } from "./commands/voice.js";
 
 // `sm --version` 출력값을 package.json 의 version 과 자동 동기화한다.
 // 과거 .version("0.1.0") 처럼 하드코딩하면 npm version 으로 버전을 올려도 CLI 출력이 안 바뀌어
@@ -109,6 +115,9 @@ program
       console.log(`onFail   : ${cfg.onFailure ?? "fallback"}`);
       console.log(`verbose  : ${cfg.verbose ? "on" : "off"}`);
       console.log(`intent   : ${cfg.captureIntent ?? "ask"}`);
+      console.log(`risk     : ${cfg.riskCheck ?? "warn"}`);
+      console.log(`revert   : ${cfg.revertCheck ?? "on"}`);
+      console.log(`privacy  : ${cfg.privacyMode ?? "standard"}`);
       console.log(`config   : ${getConfigPath()}`);
     } else {
       console.log("Not logged in. Run `sm login` to set up.");
@@ -146,13 +155,21 @@ program
   .option("--dry-run", "메시지만 출력하고 commit 은 실행하지 않습니다.")
   .option("--intent <text>", "이번 변경의 '왜' 를 한 줄로 명시 (인터랙티브 prompt 우회).")
   .option("--no-intent", "의도 입력 prompt 를 강제로 건너뜁니다 (captureIntent=always 우회).")
+  .option("--skip-risk", "위험도 평가/confirm 단계를 건너뜁니다.")
+  .option("--skip-revert", "최근 commit 대비 revert 감지를 건너뜁니다.")
   .description("staged diff 에서 커밋 메시지를 생성하고 커밋을 수행합니다.")
-  .action(async (opts: { dryRun?: boolean; intent?: string | false }) => {
+  .action(async (opts: { dryRun?: boolean; intent?: string | false; skipRisk?: boolean; skipRevert?: boolean }) => {
     // commander 는 --no-intent 가 켜진 경우 opts.intent 를 false 로 설정한다.
     // typeof === "string" 인 경우에만 사용자가 텍스트를 명시한 것으로 간주한다.
     const intent = typeof opts.intent === "string" ? opts.intent : undefined;
     const noIntent = opts.intent === false;
-    await runCommit({ dryRun: opts.dryRun === true, intent, noIntent });
+    await runCommit({
+      dryRun: opts.dryRun === true,
+      intent,
+      noIntent,
+      skipRisk: opts.skipRisk === true,
+      skipRevert: opts.skipRevert === true,
+    });
   });
 
 // `sm pr` — base..HEAD 의 변경을 분석하여 PR 본문 (Summary + Test plan) 을 생성한다.
@@ -172,12 +189,62 @@ program
     await runAmend();
   });
 
-// `sm split` — 큰 staged diff 를 의미 단위 commit 들로 어떻게 나눌지 AI 가 제안한다.
+// `sm split` — 큰 staged diff 를 의미 단위 commit 들로 어떻게 나눌지 제안.
+// 로컬 휴리스틱 + AI 제안 두 가지 모두 출력. --no-ai 로 AI 제안 생략 가능.
 program
   .command("split")
-  .description("staged diff 를 의미 단위 commit 들로 분할하는 방법을 AI 가 제안합니다.")
+  .option("--no-ai", "AI 제안을 생략하고 로컬 휴리스틱만 출력합니다.")
+  .description("staged diff 를 의미 단위 commit 들로 분할하는 방법을 제안합니다.")
+  .action(async (opts: { ai?: boolean }) => {
+    await runSplit({ noAi: opts.ai === false });
+  });
+
+// `sm style` — 저장소의 commit 메시지 스타일을 학습/조회/삭제.
+// 학습된 스타일은 `sm c` 가 다음 호출부터 prompt 에 자동 주입한다.
+const style = program
+  .command("style")
+  .description("저장소의 commit 메시지 스타일을 학습하여 향후 생성에 반영합니다.");
+
+style
+  .command("learn")
+  .option("--sample <n>", "분석할 commit 개수 (기본 200, 범위 10~2000)", (v) => parseInt(v, 10))
+  .description("git log 최근 N 개를 분석해 스타일을 저장합니다.")
+  .action(async (opts: { sample?: number }) => {
+    await runStyleLearn({ sample: opts.sample });
+  });
+
+style
+  .command("show")
+  .description("현재 저장된 스타일을 사람이 읽기 쉬운 형태로 출력합니다.")
   .action(async () => {
-    await runSplit();
+    await runStyleShow();
+  });
+
+style
+  .command("clear")
+  .description("저장된 스타일 파일을 제거합니다.")
+  .action(async () => {
+    await runStyleClear();
+  });
+
+// `sm voice` (alias `sm v`) — 음성을 전사하여 의도로 사용 후 commit 흐름 진입.
+program
+  .command("voice")
+  .alias("v")
+  .option("--file <path>", "미리 녹음한 오디오 파일 경로 (마이크 녹음 생략).")
+  .option("--seconds <n>", "마이크 녹음 시간 (초). 기본 10, 범위 1~60.", (v) => parseInt(v, 10))
+  .option("--dry-run", "메시지만 출력하고 commit 은 실행하지 않습니다.")
+  .option("--skip-risk", "위험도 평가/confirm 단계를 건너뜁니다.")
+  .option("--skip-revert", "revert 감지를 건너뜁니다.")
+  .description("음성을 전사하여 변경 의도로 사용하고 commit 합니다 (Whisper API 호출).")
+  .action(async (opts: { file?: string; seconds?: number; dryRun?: boolean; skipRisk?: boolean; skipRevert?: boolean }) => {
+    await runVoice({
+      file: opts.file,
+      seconds: opts.seconds,
+      dryRun: opts.dryRun === true,
+      skipRisk: opts.skipRisk === true,
+      skipRevert: opts.skipRevert === true,
+    });
   });
 
 // 인자 없이 sm 만 실행한 경우 — 로그인 안내 + 빠른 시작 가이드. commander 기본 도움말보다 친절.

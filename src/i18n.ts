@@ -146,6 +146,63 @@ export interface Messages {
   captureIntentNever: string;
   configChangedCaptureIntent: (v: string) => string;
 
+  // 위험도 평가 (P2).
+  riskHeader: string;
+  riskScoreLine: (bar: string) => string;
+  riskReasonLine: (reason: string) => string;
+  riskTimeWarning: (warnings: string) => string;
+  riskHighConfirm: string;
+  riskBlocked: string;
+  riskSkipped: string;
+
+  // sm config 에서 riskCheck 변경.
+  configTargetRiskCheck: string;
+  configCurrentRiskCheck: (v: string) => string;
+  configChooseRiskCheck: string;
+  riskCheckWarn: string;
+  riskCheckOn: string;
+  riskCheckOff: string;
+  configChangedRiskCheck: (v: string) => string;
+
+  // P3 — revert 감지.
+  revertHeader: (count: number) => string;
+  revertSkipped: string;
+
+  configTargetRevertCheck: string;
+  configCurrentRevertCheck: (v: string) => string;
+  configChooseRevertCheck: string;
+  revertCheckOn: string;
+  revertCheckOff: string;
+  configChangedRevertCheck: (v: string) => string;
+
+  // P4 — repo style learner.
+  styleLearning: (sample: number) => string;
+  styleLearned: (count: number, path: string) => string;
+  styleLearnFailed: (msg: string) => string;
+  styleNoCommits: string;
+  styleNotLearned: string;
+  styleShowHeader: (path: string, when: string) => string;
+  styleCleared: (path: string) => string;
+
+  // P6 — privacy tokenizer.
+  configTargetPrivacyMode: string;
+  configCurrentPrivacyMode: (v: string) => string;
+  configChoosePrivacyMode: string;
+  privacyModeOff: string;
+  privacyModeStandard: string;
+  privacyModeStrict: string;
+  configChangedPrivacyMode: (v: string) => string;
+
+  // P7 — voice.
+  voiceNoOpenaiKey: string;
+  voiceFileNotFound: (path: string) => string;
+  voiceNoFfmpeg: string;
+  voiceRecording: (seconds: number) => string;
+  voiceRecordingDone: string;
+  voiceTranscribeFailed: (msg: string) => string;
+  voiceEmptyTranscript: string;
+  voiceTranscriptCaptured: (text: string) => string;
+
   // sm amend.
   amendNoLastDiff: string;
   amendGeneratedHeader: string;
@@ -160,6 +217,11 @@ export interface Messages {
   // sm split.
   splitHeader: string;
   splitFooterHint: string;
+  splitLocalHeader: string;
+  splitLocalNoSplit: string;
+  splitAiHeader: string;
+  splitAiSkipped: string;
+  splitAiFailed: (msg: string) => string;
 
   // 선택 메뉴에서 현재 설정값 옆에 붙이는 마커.
   currentMarker: string;
@@ -298,6 +360,57 @@ const en: Messages = {
   captureIntentNever: "never  - never prompt (use --intent or SM_INTENT env to provide)",
   configChangedCaptureIntent: (v) => `captureIntent changed to ${v}.`,
 
+  riskHeader: "Risk assessment:",
+  riskScoreLine: (bar) => `  score  : ${bar}`,
+  riskReasonLine: (reason) => `  - ${reason}`,
+  riskTimeWarning: (warnings) => `  time   : ⚠ dangerous time window (${warnings})`,
+  riskHighConfirm: "High-risk commit detected. Proceed anyway?",
+  riskBlocked: "Cancelled due to high-risk commit.",
+  riskSkipped: "(risk check skipped)",
+
+  configTargetRiskCheck: "riskCheck (assess change risk before committing)",
+  configCurrentRiskCheck: (v) => `  risk     : ${v}`,
+  configChooseRiskCheck: "How should `sm c` handle high-risk changes?",
+  riskCheckWarn: "warn - score 4+ only confirms during dangerous time window (default)",
+  riskCheckOn:   "on   - score 4+ always confirms",
+  riskCheckOff:  "off  - do not assess risk at all",
+  configChangedRiskCheck: (v) => `riskCheck changed to ${v}.`,
+
+  revertHeader: (count) => `⚠ Possible revert of recent commit (${count} hint${count === 1 ? "" : "s"}):`,
+  revertSkipped: "(revert check skipped)",
+
+  configTargetRevertCheck: "revertCheck (detect if this commit reverts a recent one)",
+  configCurrentRevertCheck: (v) => `  revert   : ${v}`,
+  configChooseRevertCheck: "Detect possible reverts of recent commits?",
+  revertCheckOn:  "on  - scan recent commits and warn on potential reverts (default)",
+  revertCheckOff: "off - skip revert detection",
+  configChangedRevertCheck: (v) => `revertCheck changed to ${v}.`,
+
+  styleLearning: (sample) => `Analyzing last ${sample} commits...`,
+  styleLearned: (count, path) => `Learned style from ${count} commits. Saved to ${path}`,
+  styleLearnFailed: (msg) => `Failed to learn style: ${msg}`,
+  styleNoCommits: "No commits found to analyze. Run after at least a few commits exist.",
+  styleNotLearned: "No style learned yet for this repo. Run `sm style learn`.",
+  styleShowHeader: (path, when) => `Style file: ${path}\nAnalyzed at: ${when}`,
+  styleCleared: (path) => `Removed ${path}`,
+
+  configTargetPrivacyMode: "privacyMode (tokenize PII before sending diff to LLM)",
+  configCurrentPrivacyMode: (v) => `  privacy  : ${v}`,
+  configChoosePrivacyMode: "How aggressively should PII be tokenized?",
+  privacyModeOff:      "off      - no PII tokenization (secret masking is still on)",
+  privacyModeStandard: "standard - email/JWT/UUID/IP/CC/phone/auth-URL (default)",
+  privacyModeStrict:   "strict   - standard + all URLs + Bearer tokens",
+  configChangedPrivacyMode: (v) => `privacyMode changed to ${v}.`,
+
+  voiceNoOpenaiKey: "OpenAI API key is required for voice transcription. Run `sm login` to register one (you can keep your primary provider).",
+  voiceFileNotFound: (p) => `Audio file not found: ${p}`,
+  voiceNoFfmpeg: "ffmpeg is not installed. Install ffmpeg or pass --file <pre-recorded-audio.wav>.",
+  voiceRecording: (s) => `Recording for ${s} second(s)... speak now.`,
+  voiceRecordingDone: "Recording finished. Transcribing...",
+  voiceTranscribeFailed: (msg) => `Transcription failed: ${msg}`,
+  voiceEmptyTranscript: "Empty transcript. Nothing to use as intent.",
+  voiceTranscriptCaptured: (text) => `Transcript: "${text}"`,
+
   amendNoLastDiff: "No diff found for the last commit (root commit or merge). Aborted.",
   amendGeneratedHeader: "Generated commit message (for amend):",
   amendChoicePrompt: "Amend last commit with this message?",
@@ -309,6 +422,11 @@ const en: Messages = {
 
   splitHeader: "Suggested commit split:",
   splitFooterHint: "Follow the steps above with 'git reset HEAD <file>' + 'git add <file>' per group, then 'sm c'.",
+  splitLocalHeader: "Local split proposal (heuristic, no LLM):",
+  splitLocalNoSplit: "Single semantic group — no split needed.",
+  splitAiHeader: "AI split proposal (LLM):",
+  splitAiSkipped: "(AI proposal skipped — --no-ai)",
+  splitAiFailed: (msg) => `AI proposal failed: ${msg}`,
 
   currentMarker: "  ★ (current)",
 };
@@ -446,6 +564,57 @@ const ko: Messages = {
   captureIntentNever: "never  - 절대 묻지 않음 (--intent 또는 SM_INTENT env 만 사용)",
   configChangedCaptureIntent: (v) => `captureIntent 가 ${v} 로 변경되었습니다.`,
 
+  riskHeader: "위험도 평가:",
+  riskScoreLine: (bar) => `  점수    : ${bar}`,
+  riskReasonLine: (reason) => `  - ${reason}`,
+  riskTimeWarning: (warnings) => `  시간대  : ⚠ 위험 시간대 (${warnings})`,
+  riskHighConfirm: "고위험 변경입니다. 그래도 진행하시겠습니까?",
+  riskBlocked: "고위험 변경으로 인해 취소되었습니다.",
+  riskSkipped: "(위험도 평가 건너뜀)",
+
+  configTargetRiskCheck: "riskCheck (커밋 전 변경 위험도 평가)",
+  configCurrentRiskCheck: (v) => `  risk     : ${v}`,
+  configChooseRiskCheck: "`sm c` 가 고위험 변경을 어떻게 처리할지 선택합니다.",
+  riskCheckWarn: "warn - 점수 4 이상 + 위험 시간대일 때만 confirm (기본)",
+  riskCheckOn:   "on   - 점수 4 이상이면 항상 confirm",
+  riskCheckOff:  "off  - 평가 자체 수행 안 함",
+  configChangedRiskCheck: (v) => `riskCheck 가 ${v} 로 변경되었습니다.`,
+
+  revertHeader: (count) => `⚠ 최근 commit 을 되돌릴 가능성 (${count} 건):`,
+  revertSkipped: "(revert 감지 건너뜀)",
+
+  configTargetRevertCheck: "revertCheck (이번 commit 이 최근 commit 을 되돌리는지 감지)",
+  configCurrentRevertCheck: (v) => `  revert   : ${v}`,
+  configChooseRevertCheck: "최근 commit 대비 revert 가능성을 감지할까요?",
+  revertCheckOn:  "on  - 최근 commit 스캔하여 잠재 revert 시 경고 (기본)",
+  revertCheckOff: "off - revert 감지 안 함",
+  configChangedRevertCheck: (v) => `revertCheck 가 ${v} 로 변경되었습니다.`,
+
+  styleLearning: (sample) => `최근 ${sample} 개 commit 을 분석하는 중...`,
+  styleLearned: (count, path) => `${count} 개 commit 으로 스타일 학습 완료. 저장 위치: ${path}`,
+  styleLearnFailed: (msg) => `스타일 학습 실패: ${msg}`,
+  styleNoCommits: "분석할 commit 이 없습니다. commit 이 몇 개 쌓인 후 다시 실행하시기 바랍니다.",
+  styleNotLearned: "이 저장소의 스타일이 아직 학습되지 않았습니다. `sm style learn` 으로 학습하세요.",
+  styleShowHeader: (path, when) => `스타일 파일: ${path}\n분석 시각: ${when}`,
+  styleCleared: (path) => `삭제 완료: ${path}`,
+
+  configTargetPrivacyMode: "privacyMode (diff 를 LLM 으로 보내기 전 PII 토큰화)",
+  configCurrentPrivacyMode: (v) => `  privacy  : ${v}`,
+  configChoosePrivacyMode: "PII 를 얼마나 적극적으로 토큰화할까요?",
+  privacyModeOff:      "off      - 토큰화 안 함 (단, secret 마스킹은 항상 동작)",
+  privacyModeStandard: "standard - email/JWT/UUID/IP/CC/phone/auth-URL (기본)",
+  privacyModeStrict:   "strict   - standard + 일반 URL + Bearer 토큰까지",
+  configChangedPrivacyMode: (v) => `privacyMode 가 ${v} 로 변경되었습니다.`,
+
+  voiceNoOpenaiKey: "음성 전사는 OpenAI API 키가 필요합니다. `sm login` 으로 openai 키를 등록하시기 바랍니다 (메인 provider 는 그대로 두셔도 됩니다).",
+  voiceFileNotFound: (p) => `오디오 파일을 찾을 수 없습니다: ${p}`,
+  voiceNoFfmpeg: "ffmpeg 가 설치되어 있지 않습니다. ffmpeg 를 설치하시거나 --file <미리-녹음한-파일.wav> 옵션으로 전달하시기 바랍니다.",
+  voiceRecording: (s) => `${s} 초 동안 녹음합니다... 지금 말씀하세요.`,
+  voiceRecordingDone: "녹음 종료. 전사 중...",
+  voiceTranscribeFailed: (msg) => `전사 실패: ${msg}`,
+  voiceEmptyTranscript: "전사 결과가 비어있습니다. 의도로 사용할 내용이 없습니다.",
+  voiceTranscriptCaptured: (text) => `전사 결과: "${text}"`,
+
   amendNoLastDiff: "마지막 commit 의 diff 가 비어있습니다 (root commit / merge). 중단합니다.",
   amendGeneratedHeader: "생성된 커밋 메시지 (amend 용):",
   amendChoicePrompt: "이 메시지로 마지막 commit 을 amend 하시겠습니까?",
@@ -457,6 +626,11 @@ const ko: Messages = {
 
   splitHeader: "분할 commit 제안:",
   splitFooterHint: "위 안내에 따라 그룹별로 'git reset HEAD <file>' + 'git add <file>' 수행 후 'sm c' 로 commit 하시기 바랍니다.",
+  splitLocalHeader: "로컬 분할 제안 (LLM 없이 휴리스틱):",
+  splitLocalNoSplit: "단일 의미 묶음 — 분할 불필요.",
+  splitAiHeader: "AI 분할 제안 (LLM):",
+  splitAiSkipped: "(AI 제안 건너뜀 — --no-ai)",
+  splitAiFailed: (msg) => `AI 제안 실패: ${msg}`,
 
   currentMarker: "  ★ (현재 설정)",
 };

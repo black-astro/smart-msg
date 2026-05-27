@@ -7,6 +7,41 @@ export async function getStagedDiff(): Promise<string> {
   return stdout;
 }
 
+// 스테이징된 변경의 파일별 통계 (insertions/deletions/file path).
+// 바이너리 파일은 '-' 로 표시되어 0 으로 처리한다. 위험도 평가에 사용.
+export interface StagedNumstatEntry {
+  insertions: number;
+  deletions: number;
+  file: string;
+}
+export async function getStagedNumstat(): Promise<StagedNumstatEntry[]> {
+  const { stdout } = await execa("git", ["diff", "--staged", "--numstat"]);
+  return parseNumstat(stdout);
+}
+
+// numstat 출력 파서. 라인 형식: "<ins>\t<del>\t<path>".
+// 바이너리는 "-\t-\t<path>" 형태로 와서 ins/del 을 0 으로 처리. 파일 이름에 탭이 포함되는 사고는 git rename 경로(`-> ` 화살표) 외에는 거의 없으나, --numstat 은 항상 정확히 3 컬럼이라 split('\t', 3) 으로 안전하게 분리한다.
+// 외부 호출자가 numstat 의 raw output 만 들고 와도 같은 파서를 쓸 수 있게 export.
+export function parseNumstat(raw: string): StagedNumstatEntry[] {
+  const out: StagedNumstatEntry[] = [];
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
+    const idx1 = line.indexOf("\t");
+    const idx2 = line.indexOf("\t", idx1 + 1);
+    if (idx1 < 0 || idx2 < 0) continue;
+    const insRaw = line.slice(0, idx1);
+    const delRaw = line.slice(idx1 + 1, idx2);
+    const file = line.slice(idx2 + 1).trim();
+    if (!file) continue;
+    out.push({
+      insertions: insRaw === "-" ? 0 : Number(insRaw) || 0,
+      deletions: delRaw === "-" ? 0 : Number(delRaw) || 0,
+      file,
+    });
+  }
+  return out;
+}
+
 // 실제 커밋 실행. stdio: inherit 으로 git 출력(훅 결과 등)을 사용자 터미널에 그대로 보여줌.
 export async function commit(message: string): Promise<void> {
   await execa("git", ["commit", "-m", message], {
