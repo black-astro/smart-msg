@@ -9,7 +9,7 @@ Google Gemini, Groq (Llama), OpenAI, Anthropic Claude, Ollama (로컬) 를 지�
 
 <br>
 
-[![version](https://img.shields.io/badge/version-1.2.0-555555?style=flat-square)](https://www.npmjs.com/package/smart-msg)
+[![version](https://img.shields.io/badge/version-1.2.1-555555?style=flat-square)](https://www.npmjs.com/package/smart-msg)
 [![license](https://img.shields.io/badge/license-ISC-555555?style=flat-square)](#license)
 [![node](https://img.shields.io/badge/node-%3E%3D18-555555?style=flat-square)](https://nodejs.org)
 [![Groq](https://img.shields.io/badge/Groq-free%20tier-F55036?style=flat-square)](https://console.groq.com)
