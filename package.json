@@ -28,11 +28,22 @@
     "ai",
     "openai",
     "claude",
+    "gemini",
+    "groq",
+    "ollama",
     "cli",
     "conventional-commits"
   ],
   "author": "",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/black-astro/smart-msg.git"
+  },
+  "bugs": {
+    "url": "https://github.com/black-astro/smart-msg/issues"
+  },
+  "homepage": "https://github.com/black-astro/smart-msg#readme",
   "dependencies": {
     "commander": "^14.0.3",
     "execa": "^9.6.1",
