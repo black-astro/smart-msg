@@ -11,6 +11,7 @@ import {
   type Provider,
   type CaptureIntent,
   type RiskCheck,
+  type RevertCheck,
 } from "./config.js";
 import { RECOMMENDED_MODELS } from "./providers/types.js";
 import { pickLanguage, pickStrength } from "./login.js";
@@ -40,6 +41,7 @@ export async function runConfig(): Promise<void> {
   console.log(m.configCurrentVerbose(cfg.verbose ? "on" : "off"));
   console.log(m.configCurrentCaptureIntent(cfg.captureIntent ?? "ask"));
   console.log(m.configCurrentRiskCheck(cfg.riskCheck ?? "warn"));
+  console.log(m.configCurrentRevertCheck(cfg.revertCheck ?? "on"));
   console.log(m.configCurrentPath(getConfigPath()));
   console.log("");
 
@@ -59,6 +61,7 @@ export async function runConfig(): Promise<void> {
       { title: m.configTargetVerbose, value: "verbose" },
       { title: m.configTargetCaptureIntent, value: "captureIntent" },
       { title: m.configTargetRiskCheck, value: "riskCheck" },
+      { title: m.configTargetRevertCheck, value: "revertCheck" },
       { title: m.configTargetBaseUrl, value: "baseUrl" },
       { title: m.configTargetCancel, value: "cancel" },
     ],
@@ -267,6 +270,24 @@ export async function runConfig(): Promise<void> {
     if (!v) return;
     await updateConfig({ riskCheck: v as RiskCheck });
     console.log(m.configChangedRiskCheck(v));
+    return;
+  }
+
+  if (target === "revertCheck") {
+    const current: RevertCheck = cfg.revertCheck ?? "on";
+    const { v } = await prompts({
+      type: "select",
+      name: "v",
+      message: m.configChooseRevertCheck,
+      choices: [
+        { title: current === "on"  ? `${m.revertCheckOn}${m.currentMarker}`  : m.revertCheckOn,  value: "on"  },
+        { title: current === "off" ? `${m.revertCheckOff}${m.currentMarker}` : m.revertCheckOff, value: "off" },
+      ],
+      initial: current === "off" ? 1 : 0,
+    });
+    if (!v) return;
+    await updateConfig({ revertCheck: v as RevertCheck });
+    console.log(m.configChangedRevertCheck(v));
     return;
   }
 

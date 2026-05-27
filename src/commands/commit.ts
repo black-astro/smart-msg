@@ -18,6 +18,12 @@ import { askChoice, askText, askYesNo } from "../cliPrompt.js";
 import { editText } from "../editorEdit.js";
 import { t } from "../i18n.js";
 import { assessRisk, collectRiskFactors, formatRiskBar } from "../riskScore.js";
+import {
+  detectReverts,
+  getRecentCommitsWithPatches,
+  parseUnifiedDiff,
+  summarizeHits,
+} from "../revertDetector.js";
 
 export interface CommitOptions {
   dryRun?: boolean;
@@ -28,6 +34,8 @@ export interface CommitOptions {
   noIntent?: boolean;
   // --skip-risk 플래그. true 면 위험도 평가 자체를 건너뛴다 (config.riskCheck=off 와 동등).
   skipRisk?: boolean;
+  // --skip-revert 플래그. true 면 revert 감지 자체를 건너뛴다 (config.revertCheck=off 와 동등).
+  skipRevert?: boolean;
 }
 
 export async function runCommit(opts: CommitOptions = {}): Promise<void> {
@@ -49,6 +57,9 @@ export async function runCommit(opts: CommitOptions = {}): Promise<void> {
     return;
   }
 
+  // revert 감지 — 한 번만 수행하고 재생성 루프에서 재출력. git 비용은 commit 한 번당 한 번만.
+  const revertLines = await computeRevertWarnings(opts, cfg?.revertCheck ?? "on", cfg?.revertLookback ?? 20, diff, lang);
+
   // 사용자가 'r' 로 재생성을 원할 수 있어 루프.
   let message = "";
   for (let i = 0; i < 5; i++) {
@@ -62,6 +73,11 @@ export async function runCommit(opts: CommitOptions = {}): Promise<void> {
     console.log(`\n${m.generatedMessageHeader}`);
     console.log(message);
     console.log("");
+
+    if (revertLines.length > 0) {
+      for (const line of revertLines) console.log(line);
+      console.log("");
+    }
 
     if (opts.dryRun) {
       console.log(m.dryRunFinished);
@@ -166,6 +182,35 @@ async function passesRiskGate(
     return false;
   }
   return true;
+}
+
+// revert 감지 결과를 사용자에게 보여줄 라인들로 변환.
+// 빈 배열이면 출력할 게 없다는 뜻 (감지 결과 자체가 없거나 모드 off).
+// git 호출 실패는 silent — commit 자체는 막지 않는다.
+async function computeRevertWarnings(
+  opts: CommitOptions,
+  mode: "on" | "off",
+  lookback: number,
+  stagedDiff: string,
+  lang: "ko" | "en",
+): Promise<string[]> {
+  const m = t(lang);
+
+  if (mode === "off" || opts.skipRevert) {
+    if (opts.skipRevert) console.log(m.revertSkipped);
+    return [];
+  }
+
+  try {
+    const staged = parseUnifiedDiff(stagedDiff);
+    const recent = await getRecentCommitsWithPatches(Math.max(1, Math.min(100, lookback)));
+    const hits = detectReverts(staged, recent);
+    if (hits.length === 0) return [];
+    const summary = summarizeHits(hits);
+    return [m.revertHeader(hits.length), ...summary];
+  } catch {
+    return [];
+  }
 }
 
 // 의도 입력 해결.

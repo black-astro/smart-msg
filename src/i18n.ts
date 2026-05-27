@@ -164,6 +164,17 @@ export interface Messages {
   riskCheckOff: string;
   configChangedRiskCheck: (v: string) => string;
 
+  // P3 — revert 감지.
+  revertHeader: (count: number) => string;
+  revertSkipped: string;
+
+  configTargetRevertCheck: string;
+  configCurrentRevertCheck: (v: string) => string;
+  configChooseRevertCheck: string;
+  revertCheckOn: string;
+  revertCheckOff: string;
+  configChangedRevertCheck: (v: string) => string;
+
   // sm amend.
   amendNoLastDiff: string;
   amendGeneratedHeader: string;
@@ -332,6 +343,16 @@ const en: Messages = {
   riskCheckOff:  "off  - do not assess risk at all",
   configChangedRiskCheck: (v) => `riskCheck changed to ${v}.`,
 
+  revertHeader: (count) => `⚠ Possible revert of recent commit (${count} hint${count === 1 ? "" : "s"}):`,
+  revertSkipped: "(revert check skipped)",
+
+  configTargetRevertCheck: "revertCheck (detect if this commit reverts a recent one)",
+  configCurrentRevertCheck: (v) => `  revert   : ${v}`,
+  configChooseRevertCheck: "Detect possible reverts of recent commits?",
+  revertCheckOn:  "on  - scan recent commits and warn on potential reverts (default)",
+  revertCheckOff: "off - skip revert detection",
+  configChangedRevertCheck: (v) => `revertCheck changed to ${v}.`,
+
   amendNoLastDiff: "No diff found for the last commit (root commit or merge). Aborted.",
   amendGeneratedHeader: "Generated commit message (for amend):",
   amendChoicePrompt: "Amend last commit with this message?",
@@ -495,6 +516,16 @@ const ko: Messages = {
   riskCheckOn:   "on   - 점수 4 이상이면 항상 confirm",
   riskCheckOff:  "off  - 평가 자체 수행 안 함",
   configChangedRiskCheck: (v) => `riskCheck 가 ${v} 로 변경되었습니다.`,
+
+  revertHeader: (count) => `⚠ 최근 commit 을 되돌릴 가능성 (${count} 건):`,
+  revertSkipped: "(revert 감지 건너뜀)",
+
+  configTargetRevertCheck: "revertCheck (이번 commit 이 최근 commit 을 되돌리는지 감지)",
+  configCurrentRevertCheck: (v) => `  revert   : ${v}`,
+  configChooseRevertCheck: "최근 commit 대비 revert 가능성을 감지할까요?",
+  revertCheckOn:  "on  - 최근 commit 스캔하여 잠재 revert 시 경고 (기본)",
+  revertCheckOff: "off - revert 감지 안 함",
+  configChangedRevertCheck: (v) => `revertCheck 가 ${v} 로 변경되었습니다.`,
 
   amendNoLastDiff: "마지막 commit 의 diff 가 비어있습니다 (root commit / merge). 중단합니다.",
   amendGeneratedHeader: "생성된 커밋 메시지 (amend 용):",
