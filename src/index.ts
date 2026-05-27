@@ -25,6 +25,7 @@ import {
   runStyleLearn,
   runStyleShow,
 } from "./commands/style.js";
+import { runVoice } from "./commands/voice.js";
 
 // `sm --version` 출력값을 package.json 의 version 과 자동 동기화한다.
 // 과거 .version("0.1.0") 처럼 하드코딩하면 npm version 으로 버전을 올려도 CLI 출력이 안 바뀌어
@@ -224,6 +225,26 @@ style
   .description("저장된 스타일 파일을 제거합니다.")
   .action(async () => {
     await runStyleClear();
+  });
+
+// `sm voice` (alias `sm v`) — 음성을 전사하여 의도로 사용 후 commit 흐름 진입.
+program
+  .command("voice")
+  .alias("v")
+  .option("--file <path>", "미리 녹음한 오디오 파일 경로 (마이크 녹음 생략).")
+  .option("--seconds <n>", "마이크 녹음 시간 (초). 기본 10, 범위 1~60.", (v) => parseInt(v, 10))
+  .option("--dry-run", "메시지만 출력하고 commit 은 실행하지 않습니다.")
+  .option("--skip-risk", "위험도 평가/confirm 단계를 건너뜁니다.")
+  .option("--skip-revert", "revert 감지를 건너뜁니다.")
+  .description("음성을 전사하여 변경 의도로 사용하고 commit 합니다 (Whisper API 호출).")
+  .action(async (opts: { file?: string; seconds?: number; dryRun?: boolean; skipRisk?: boolean; skipRevert?: boolean }) => {
+    await runVoice({
+      file: opts.file,
+      seconds: opts.seconds,
+      dryRun: opts.dryRun === true,
+      skipRisk: opts.skipRisk === true,
+      skipRevert: opts.skipRevert === true,
+    });
   });
 
 // 인자 없이 sm 만 실행한 경우 — 로그인 안내 + 빠른 시작 가이드. commander 기본 도움말보다 친절.
