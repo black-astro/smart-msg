@@ -7,7 +7,8 @@ import { existsSync } from "node:fs";
 
 // 어떤 AI 를 쓰는지 식별하는 태그. 새 provider 추가하면 여기 늘리면 됨.
 // gemini / groq 모두 무료 티어 보유. groq 은 자체 LPU 인프라로 503 빈도가 낮은 안정적 무료 대안.
-export type Provider = "gemini" | "groq" | "openai" | "claude";
+// ollama 는 로컬 실행 LLM (인터넷 불필요 + 회사 보안 환경에 적합) — 기본 endpoint 는 http://localhost:11434.
+export type Provider = "gemini" | "groq" | "openai" | "claude" | "ollama";
 
 // 커밋 메시지 출력 언어.
 export type Language = "ko" | "en";
@@ -52,6 +53,28 @@ export interface Config {
   globalHookInstalled?: boolean;
   // 글로벌 hook 설치 직전의 core.hooksPath 값. uninstall 시 복원하기 위해 보관.
   previousGlobalHooksPath?: string;
+
+  // 메인 provider 가 실패 (503/timeout 등) 했을 때 자동으로 시도할 다른 provider.
+  // 키가 등록되어 있어야 폴백이 동작한다. 미설정 시 폴백 없음.
+  fallbackProvider?: Provider;
+
+  // type 앞에 gitmoji 를 붙일지. 예: feat → ✨ feat. 미설정 시 false.
+  gitmoji?: boolean;
+
+  // 브랜치명에서 ISSUE-KEY (예: AUTH-123) 를 추출해 footer 에 'Refs: AUTH-123' 자동 첨부.
+  // 미설정 시 false. 정규식은 git.ts 의 extractIssueKey 참조.
+  autoIssue?: boolean;
+
+  // 추가 디버그 출력. true 시 prompt/응답을 stderr 에 출력 (사용자 진단용).
+  // 환경변수 SM_DEBUG=1 로도 동일하게 활성화 가능.
+  verbose?: boolean;
+
+  // Ollama endpoint URL. 미설정 시 http://localhost:11434.
+  ollamaBaseUrl?: string;
+
+  // OpenAI 호환 endpoint 의 base URL (Azure OpenAI, vLLM, OpenRouter 등).
+  // 미설정 시 OpenAI 기본 endpoint 사용.
+  openaiBaseUrl?: string;
 }
 
 // 파일 경로는 한 곳에서만 계산. 다른 곳에서 직접 경로 만들지 않게 export.

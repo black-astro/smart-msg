@@ -8,8 +8,7 @@
 import type { Language } from "./config.js";
 
 export interface Messages {
-  // 언어 선택 (이 단계는 항상 영어 라벨로 안내한다 - 아직 사용자가 언어를 고르지 않은 시점이므로).
-  // 따라서 이 키만 별도로 사용되며, 다른 키들은 lang 결정 후 표시된다.
+  // 언어 선택 — 항상 영어 라벨로 표시.
   chooseLanguagePrompt: string;
   langOptionEn: string;
   langOptionKo: string;
@@ -19,9 +18,14 @@ export interface Messages {
   providerGroqLabel: string;
   providerOpenaiLabel: string;
   providerClaudeLabel: string;
+  providerOllamaLabel: string;
 
   chooseModelDefault: string;
   chooseModelGemini: string;
+  chooseModelOllama: string;
+  modelCustomEntry: string;
+  enterCustomModel: string;
+  ollamaEnterBaseUrl: string;
 
   chooseStrength: string;
   strengthSimple: string;
@@ -51,6 +55,7 @@ export interface Messages {
   globalHookSkippedTip: string;
 
   askYesNoInvalid: string;
+  askChoiceInvalid: (keys: string) => string;
   cancelled: string;
 
   // sm config 에서 사용.
@@ -69,6 +74,7 @@ export interface Messages {
   configChangedStrength: (v: string) => string;
   configChangedModel: (v: string) => string;
   configChooseModelOf: (provider: string) => string;
+  configEnterModel: (provider: string) => string;
   configTargetOnFailure: string;
   configCurrentOnFailure: (v: string) => string;
   configChooseOnFailure: string;
@@ -83,9 +89,61 @@ export interface Messages {
   tonePolite: string;
   configChangedTone: (v: string) => string;
 
-  // hook 실패 안내 (msgFile 코멘트 + stderr).
+  configTargetGitmoji: string;
+  configCurrentGitmoji: (v: string) => string;
+  configChooseGitmoji: string;
+  configChangedGitmoji: (v: string) => string;
+
+  configTargetAutoIssue: string;
+  configCurrentAutoIssue: (v: string) => string;
+  configChooseAutoIssue: string;
+  configChangedAutoIssue: (v: string) => string;
+
+  configTargetFallback: string;
+  configCurrentFallback: (v: string) => string;
+  configChooseFallback: string;
+  configChangedFallback: (v: string) => string;
+
+  configTargetVerbose: string;
+  configCurrentVerbose: (v: string) => string;
+  configChooseVerbose: string;
+  configChangedVerbose: (v: string) => string;
+
+  configTargetBaseUrl: string;
+  configBaseUrlNotApplicable: (provider: string) => string;
+  configEnterBaseUrl: (provider: string, current: string) => string;
+  configChangedBaseUrl: (v: string) => string;
+
+  // hook 실패 안내.
   hookFailureCommentIntro: string;
   hookFailureCommentCause: (cause: string) => string;
+
+  // sm c / sm amend 에서 사용.
+  noStagedChanges: string;
+  generatedMessageHeader: string;
+  commitChoicePrompt: string;
+  commitChoiceYes: string;
+  commitChoiceRegen: string;
+  commitChoiceEdit: string;
+  commitChoiceNo: string;
+  regenerating: string;
+  regenLimitReached: string;
+  dryRunFinished: string;
+
+  // sm amend.
+  amendNoLastDiff: string;
+  amendGeneratedHeader: string;
+  amendChoicePrompt: string;
+  amendChoiceYes: string;
+
+  // sm pr.
+  prNoBase: string;
+  prNoDiff: (base: string) => string;
+  prHint: string;
+
+  // sm split.
+  splitHeader: string;
+  splitFooterHint: string;
 
   // 선택 메뉴에서 현재 설정값 옆에 붙이는 마커.
   currentMarker: string;
@@ -101,9 +159,14 @@ const en: Messages = {
   providerGroqLabel:   "Groq (Llama)   - Free tier, fast & stable (recommended for free use)",
   providerOpenaiLabel: "OpenAI (GPT)   - Pay-as-you-go (paid)",
   providerClaudeLabel: "Anthropic Claude - Pay-as-you-go (paid)",
+  providerOllamaLabel: "Ollama (local)  - Local LLM, no API key required",
 
   chooseModelDefault: "Choose a model (cheapest first)",
   chooseModelGemini: "Choose a model (free tier available)",
+  chooseModelOllama: "Choose an Ollama model (or enter custom)",
+  modelCustomEntry: "(enter a custom model name)",
+  enterCustomModel: "Enter the model name installed in your Ollama",
+  ollamaEnterBaseUrl: "Enter Ollama base URL (default: http://localhost:11434)",
 
   chooseStrength: "Choose message strength (length and detail level)",
   strengthSimple: "simple - one line (Conventional Commit)",
@@ -113,7 +176,7 @@ const en: Messages = {
   paidNoticeLine1: (label) => `[Notice] ${label} API is pay-as-you-go.`,
   paidNoticeLine2: "         ChatGPT Plus / Claude Max subscriptions do NOT cover API calls.",
   paidNoticeLine3: "         You must register a card or top up credits in the provider console.",
-  paidNoticeLine4: "         To use it for free, choose 'Google Gemini' instead.",
+  paidNoticeLine4: "         To use it for free, choose 'Google Gemini', 'Groq', or 'Ollama' instead.",
 
   openingBrowser: (url) => `\nOpening API key issuance page in your browser: ${url}`,
   browserOpenFailed: "(Failed to open browser automatically. Please open the URL above manually.)",
@@ -133,6 +196,7 @@ const en: Messages = {
   globalHookSkippedTip: "Use `sm c` from the command line, or re-run `sm login` later to set it up.",
 
   askYesNoInvalid: "Only y / Y / n / N or empty input (Enter) is allowed.",
+  askChoiceInvalid: (keys) => `Please enter one of: ${keys} (or Enter for default).`,
   cancelled: "Cancelled.",
 
   configHeader: "Current settings:",
@@ -150,6 +214,7 @@ const en: Messages = {
   configChangedStrength: (v) => `strength changed to ${v}.`,
   configChangedModel:    (v) => `model changed to ${v}.`,
   configChooseModelOf: (provider) => `Choose ${provider} model`,
+  configEnterModel: (provider) => `Enter the ${provider} model name`,
   configTargetOnFailure: "on-failure (behavior when AI call fails)",
   configCurrentOnFailure: (v) => `  on-failure: ${v}`,
   configChooseOnFailure: "Choose hook behavior when AI call fails",
@@ -164,8 +229,56 @@ const en: Messages = {
   tonePolite: "polite - formal endings (e.g. \"~했습니다\", \"~합니다\")",
   configChangedTone: (v) => `tone changed to ${v}.`,
 
+  configTargetGitmoji: "gitmoji (prefix commit type with an emoji)",
+  configCurrentGitmoji: (v) => `  gitmoji  : ${v}`,
+  configChooseGitmoji: "Use gitmoji prefix (e.g. \"✨ feat: ...\")?",
+  configChangedGitmoji: (v) => `gitmoji turned ${v}.`,
+
+  configTargetAutoIssue: "autoIssue (extract issue key from branch and append Refs:)",
+  configCurrentAutoIssue: (v) => `  autoIssue: ${v}`,
+  configChooseAutoIssue: "Auto-append 'Refs: <KEY>' from branch name (e.g. AUTH-123-...)?",
+  configChangedAutoIssue: (v) => `autoIssue turned ${v}.`,
+
+  configTargetFallback: "fallback (provider to try when the primary one fails)",
+  configCurrentFallback: (v) => `  fallback : ${v}`,
+  configChooseFallback: "Choose fallback provider (used when the primary one fails)",
+  configChangedFallback: (v) => `fallback set to ${v}.`,
+
+  configTargetVerbose: "verbose (print prompt/response to stderr)",
+  configCurrentVerbose: (v) => `  verbose  : ${v}`,
+  configChooseVerbose: "Print prompt/response to stderr for debugging?",
+  configChangedVerbose: (v) => `verbose turned ${v}.`,
+
+  configTargetBaseUrl: "baseUrl (custom endpoint for openai/ollama)",
+  configBaseUrlNotApplicable: (p) => `Custom baseUrl is only applicable to 'openai' or 'ollama'. Current provider: ${p}`,
+  configEnterBaseUrl: (p, cur) => `Enter base URL for ${p} (current: ${cur}; empty = default)`,
+  configChangedBaseUrl: (v) => `baseUrl changed to ${v}.`,
+
   hookFailureCommentIntro: "smart-msg: AI message generation failed. Write manually here, or run `sm c` to retry.",
   hookFailureCommentCause: (cause) => `cause: ${cause}`,
+
+  noStagedChanges: "No staged changes. Please run 'git add' first.",
+  generatedMessageHeader: "Generated commit message:",
+  commitChoicePrompt: "Proceed with this commit?",
+  commitChoiceYes: "commit as-is",
+  commitChoiceRegen: "regenerate the message",
+  commitChoiceEdit: "open editor to edit then commit",
+  commitChoiceNo: "cancel",
+  regenerating: "Regenerating...",
+  regenLimitReached: "Reached regeneration limit. Cancelled.",
+  dryRunFinished: "(dry-run) Skipping git commit.",
+
+  amendNoLastDiff: "No diff found for the last commit (root commit or merge). Aborted.",
+  amendGeneratedHeader: "Generated commit message (for amend):",
+  amendChoicePrompt: "Amend last commit with this message?",
+  amendChoiceYes: "amend as-is",
+
+  prNoBase: "Could not detect base ref (origin/main / main / master / develop). Specify with --base.",
+  prNoDiff: (base) => `No diff between ${base} and HEAD. Nothing to PR.`,
+  prHint: "(Tip) Pipe into gh: sm pr | gh pr create --body-file -",
+
+  splitHeader: "Suggested commit split:",
+  splitFooterHint: "Follow the steps above with 'git reset HEAD <file>' + 'git add <file>' per group, then 'sm c'.",
 
   currentMarker: "  ★ (current)",
 };
@@ -180,9 +293,14 @@ const ko: Messages = {
   providerGroqLabel:   "Groq (Llama)   — 무료 티어, 빠르고 안정적 (무료 사용 권장)",
   providerOpenaiLabel: "OpenAI (GPT)   — API 사용량 만큼 과금 (유료)",
   providerClaudeLabel: "Anthropic Claude — API 사용량 만큼 과금 (유료)",
+  providerOllamaLabel: "Ollama (로컬)   — 로컬 LLM, API 키 불필요",
 
   chooseModelDefault: "모델을 선택합니다. (저비용 순)",
   chooseModelGemini: "모델을 선택합니다. (무료 티어 사용 가능)",
+  chooseModelOllama: "Ollama 모델을 선택합니다. (직접 입력도 가능)",
+  modelCustomEntry: "(직접 입력)",
+  enterCustomModel: "Ollama 에 설치된 모델명을 입력하시기 바랍니다.",
+  ollamaEnterBaseUrl: "Ollama base URL 을 입력합니다. (기본: http://localhost:11434)",
 
   chooseStrength: "메시지 강도를 선택합니다. (길이 및 상세도)",
   strengthSimple: "simple — 한 줄 (Conventional Commit)",
@@ -192,7 +310,7 @@ const ko: Messages = {
   paidNoticeLine1: (label) => `[안내] ${label} API 는 사용량 기반 종량제입니다.`,
   paidNoticeLine2: "       ChatGPT Plus / Claude Max 등의 구독 결제로는 API 호출이 동작하지 않으며,",
   paidNoticeLine3: "       콘솔에서 별도로 카드 등록 또는 크레딧 충전이 필요합니다.",
-  paidNoticeLine4: "       무료로 사용하시려면 'Google Gemini' 를 선택하시기 바랍니다.",
+  paidNoticeLine4: "       무료로 사용하시려면 'Google Gemini', 'Groq', 'Ollama' 중 하나를 선택하시기 바랍니다.",
 
   openingBrowser: (url) => `\n브라우저에서 API 키 발급 페이지를 엽니다: ${url}`,
   browserOpenFailed: "(브라우저 자동 오픈에 실패하였습니다. 위 URL 을 직접 열어주시기 바랍니다.)",
@@ -212,6 +330,7 @@ const ko: Messages = {
   globalHookSkippedTip: "명령줄에서 `sm c` 로 사용하시거나, 추후 `sm login` 을 다시 실행하여 설정할 수 있습니다.",
 
   askYesNoInvalid: "y / Y / n / N 또는 빈 입력(Enter) 만 입력 가능합니다.",
+  askChoiceInvalid: (keys) => `다음 중 하나만 입력 가능합니다: ${keys} (또는 Enter 로 기본값).`,
   cancelled: "취소되었습니다.",
 
   configHeader: "현재 설정:",
@@ -229,6 +348,7 @@ const ko: Messages = {
   configChangedStrength: (v) => `strength 가 ${v} 로 변경되었습니다.`,
   configChangedModel:    (v) => `model 이 ${v} 로 변경되었습니다.`,
   configChooseModelOf: (provider) => `${provider} 의 모델을 선택합니다.`,
+  configEnterModel: (provider) => `${provider} 모델명을 입력합니다.`,
   configTargetOnFailure: "on-failure (AI 호출 실패 시 동작)",
   configCurrentOnFailure: (v) => `  on-failure: ${v}`,
   configChooseOnFailure: "AI 호출 실패 시의 hook 동작을 선택합니다.",
@@ -243,8 +363,56 @@ const ko: Messages = {
   tonePolite: "polite - 정중체 (예: \"~했습니다\", \"~합니다\")",
   configChangedTone: (v) => `tone 이 ${v} 로 변경되었습니다.`,
 
+  configTargetGitmoji: "gitmoji (commit type 앞에 이모지 prefix)",
+  configCurrentGitmoji: (v) => `  gitmoji  : ${v}`,
+  configChooseGitmoji: "gitmoji prefix 를 사용하시겠습니까? (예: \"✨ feat: ...\")",
+  configChangedGitmoji: (v) => `gitmoji 가 ${v} 로 변경되었습니다.`,
+
+  configTargetAutoIssue: "autoIssue (브랜치명에서 이슈키 추출 후 Refs: 자동 첨부)",
+  configCurrentAutoIssue: (v) => `  autoIssue: ${v}`,
+  configChooseAutoIssue: "브랜치명(AUTH-123-...) 에서 추출한 이슈키를 'Refs:' footer 로 자동 추가하시겠습니까?",
+  configChangedAutoIssue: (v) => `autoIssue 가 ${v} 로 변경되었습니다.`,
+
+  configTargetFallback: "fallback (메인 provider 실패 시 대체 provider)",
+  configCurrentFallback: (v) => `  fallback : ${v}`,
+  configChooseFallback: "메인 provider 실패 시 자동으로 시도할 폴백 provider 를 선택합니다.",
+  configChangedFallback: (v) => `fallback 이 ${v} 로 변경되었습니다.`,
+
+  configTargetVerbose: "verbose (prompt / 응답 stderr 출력)",
+  configCurrentVerbose: (v) => `  verbose  : ${v}`,
+  configChooseVerbose: "디버그용으로 prompt / 응답을 stderr 에 출력하시겠습니까?",
+  configChangedVerbose: (v) => `verbose 가 ${v} 로 변경되었습니다.`,
+
+  configTargetBaseUrl: "baseUrl (openai/ollama custom endpoint)",
+  configBaseUrlNotApplicable: (p) => `baseUrl 은 'openai' 또는 'ollama' provider 에만 적용됩니다. 현재: ${p}`,
+  configEnterBaseUrl: (p, cur) => `${p} 의 base URL 을 입력합니다. (현재: ${cur}, 빈 입력 = 기본값)`,
+  configChangedBaseUrl: (v) => `baseUrl 이 ${v} 로 변경되었습니다.`,
+
   hookFailureCommentIntro: "smart-msg: AI 메시지 자동 생성에 실패했습니다. 여기에 직접 작성하시거나 'sm c' 로 다시 시도하시기 바랍니다.",
   hookFailureCommentCause: (cause) => `원인: ${cause}`,
+
+  noStagedChanges: "스테이지된 변경사항이 없습니다. 먼저 git add 를 실행하시기 바랍니다.",
+  generatedMessageHeader: "생성된 커밋 메시지:",
+  commitChoicePrompt: "이 메시지로 커밋을 진행하시겠습니까?",
+  commitChoiceYes: "그대로 commit",
+  commitChoiceRegen: "메시지 다시 생성",
+  commitChoiceEdit: "에디터로 열어 수정 후 commit",
+  commitChoiceNo: "취소",
+  regenerating: "다시 생성하는 중...",
+  regenLimitReached: "재생성 횟수 한도에 도달하여 취소되었습니다.",
+  dryRunFinished: "(dry-run) git commit 은 실행하지 않습니다.",
+
+  amendNoLastDiff: "마지막 commit 의 diff 가 비어있습니다 (root commit / merge). 중단합니다.",
+  amendGeneratedHeader: "생성된 커밋 메시지 (amend 용):",
+  amendChoicePrompt: "이 메시지로 마지막 commit 을 amend 하시겠습니까?",
+  amendChoiceYes: "그대로 amend",
+
+  prNoBase: "base ref 를 자동으로 찾지 못했습니다 (origin/main / main / master / develop). --base 로 지정해주세요.",
+  prNoDiff: (base) => `${base} 와 HEAD 의 diff 가 비어있습니다. PR 만들 변경이 없습니다.`,
+  prHint: "(팁) gh 와 파이프 연결: sm pr | gh pr create --body-file -",
+
+  splitHeader: "분할 commit 제안:",
+  splitFooterHint: "위 안내에 따라 그룹별로 'git reset HEAD <file>' + 'git add <file>' 수행 후 'sm c' 로 commit 하시기 바랍니다.",
 
   currentMarker: "  ★ (현재 설정)",
 };

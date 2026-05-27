@@ -1,8 +1,10 @@
 // 모든 provider 가 공유하는 프롬프트 빌더. 한 곳에서만 수정하도록 분리.
 // 언어(ko/en), 강도(simple/middle/hard), 톤(report/polite) 에 따라 지시문이 달라진다.
 import type { Language, Strength, Tone } from "../config.js";
+import { prepareDiff } from "../diffUtils.js";
 
 // diff 가 너무 길면 토큰비 폭증 → 앞부분만 사용. 8000 자도 보통 충분.
+// 큰 PR/feature 변경에서는 diffUtils.condenseDiff 가 파일별로 앞부분을 분할 채택한다.
 const DIFF_LIMIT = 8000;
 
 // 강도별 출력 형식 지시문. 모델한테 분명한 형태를 알려주는 게 결과 일관성 핵심.
@@ -53,21 +55,61 @@ const TONE_INSTRUCTIONS_KO: Record<Tone, string> = {
 - 격식 있는 글말 톤`,
 };
 
+// gitmoji prefix. true 일 경우 첫 줄 type 앞에 이모지를 붙이도록 지시.
+// 이모지는 conventional commit 의 'type' 매핑이 사실상 표준 (https://gitmoji.dev) 이라 그것을 따른다.
+const GITMOJI_INSTRUCTION = `- 첫 줄의 type 앞에 다음 매핑에 따라 이모지를 한 개 붙이세요:
+    feat → ✨, fix → 🐛, docs → 📝, refactor → ♻️, perf → ⚡️, test → ✅,
+    chore → 🔧, build → 📦, style → 💄
+- 예: "✨ feat(auth): add OAuth login flow"`;
+
+export interface BranchContext {
+  // 현재 브랜치명. 없으면 미지정.
+  name?: string;
+  // 브랜치명에서 추출한 이슈 키 (예: AUTH-123). 없으면 미지정.
+  issueKey?: string;
+}
+
 export interface PromptOptions {
   diff: string;
   language: Language;
   strength: Strength;
   tone: Tone;
+  gitmoji?: boolean;
+  branch?: BranchContext;
+  // PR 본문 / amend 처럼 commit 메시지가 아닌 다른 출력을 만들 때 모드를 바꾸기 위한 옵션.
+  // 미설정 시 'commit'.
+  mode?: "commit" | "pr" | "split";
 }
 
-export function buildPrompt({ diff, language, strength, tone }: PromptOptions): string {
-  const limited = diff.slice(0, DIFF_LIMIT);
+export function buildPrompt({
+  diff,
+  language,
+  strength,
+  tone,
+  gitmoji = false,
+  branch,
+  mode = "commit",
+}: PromptOptions): string {
+  const prepared = prepareDiff(diff, DIFF_LIMIT);
+
+  if (mode === "pr") {
+    return buildPrPrompt({ diff: prepared.text, language, branch });
+  }
+  if (mode === "split") {
+    return buildSplitPrompt({ diff: prepared.text, language });
+  }
 
   // 한국어 출력에서만 톤 지시 추가. 영어는 별도 톤 지시 없이 imperative 표준 따름.
   const toneBlock =
     language === "ko"
       ? `\n본문 톤 (한국어 출력):\n${TONE_INSTRUCTIONS_KO[tone]}\n`
       : "";
+
+  const gitmojiBlock = gitmoji ? `\ngitmoji:\n${GITMOJI_INSTRUCTION}\n` : "";
+
+  const branchBlock = buildBranchBlock(branch);
+
+  const noticeBlock = buildNoticeBlock(prepared);
 
   return `너는 senior software engineer야.
 아래 git diff (마지막 커밋 이후 스테이징된 변경분)를 보고 Conventional Commit 형식의 커밋 메시지를 만들어줘.
@@ -78,11 +120,83 @@ export function buildPrompt({ diff, language, strength, tone }: PromptOptions): 
 - 메시지 외 다른 텍스트(설명, 코드블록 표시 등) 절대 금지
 
 ${LANGUAGE_INSTRUCTIONS[language]}
-${toneBlock}
-출력 형식:
+${toneBlock}${gitmojiBlock}${branchBlock}출력 형식:
 ${STRENGTH_INSTRUCTIONS[strength]}
+${noticeBlock}
+git diff:
+${prepared.text}
+`;
+}
+
+function buildBranchBlock(branch?: BranchContext): string {
+  if (!branch?.name && !branch?.issueKey) return "";
+  const parts: string[] = ["\n브랜치 컨텍스트:"];
+  if (branch.name) parts.push(`- 현재 브랜치명: ${branch.name}`);
+  if (branch.issueKey) parts.push(`- 추출된 이슈 키: ${branch.issueKey} (이 정보는 footer 에 자동 추가되므로 본문에 다시 적지 마세요)`);
+  return `${parts.join("\n")}\n`;
+}
+
+function buildNoticeBlock(prepared: { masked: boolean; truncated: boolean }): string {
+  const lines: string[] = [];
+  if (prepared.masked) lines.push("- 일부 라인은 [REDACTED] 로 치환되어 있습니다 (민감정보 마스킹). 마스킹된 값에 대한 추측은 하지 마세요.");
+  if (prepared.truncated) lines.push("- 본 diff 는 길이 제한으로 일부가 축약되었습니다.");
+  if (lines.length === 0) return "";
+  return `\n주의:\n${lines.join("\n")}\n`;
+}
+
+// PR 본문 생성 프롬프트. summary + 변경점 + 테스트 plan 까지.
+function buildPrPrompt(opts: { diff: string; language: Language; branch?: BranchContext }): string {
+  const lang = opts.language === "ko" ? "한국어" : "영어";
+  const branchBlock = buildBranchBlock(opts.branch);
+  return `너는 senior software engineer야.
+아래 git diff (이번 PR 의 모든 변경) 를 읽고 PR 본문을 ${lang}로 작성해줘.
+
+출력 형식:
+## Summary
+- 3~6개 bullet. 변경 동기 / 핵심 변경 / 영향 위주.
+
+## Test plan
+- 사용자가 이 PR 을 검증할 수 있는 체크리스트. "[ ] ..." 형태로 3~6개.
+
+규칙:
+- 마크다운 헤더 (##) 를 그대로 사용.
+- 다른 텍스트 (설명, 코드블록 fence 등) 절대 추가 금지.
+${branchBlock}
+git diff:
+${opts.diff}
+`;
+}
+
+// diff 분할 제안 프롬프트.
+// 모델이 "현재 staged 변경을 의미 단위로 묶어보면 어떤 commit 들로 나눌 수 있을지" 를 제안한다.
+// 실제 split 은 사용자가 수동으로 git reset + git add 로 처리해야 한다 (자동 split 은 위험하므로 안내만).
+function buildSplitPrompt(opts: { diff: string; language: Language }): string {
+  const lang = opts.language === "ko" ? "한국어" : "영어";
+  return `너는 senior software engineer야.
+아래 git diff 는 한 번의 commit 으로 묶기엔 너무 큰 것 같다. 의미 단위로 나누면 어떤 commit 들이 좋을지 ${lang}로 제안해줘.
+
+출력 형식 (정확히 이 구조):
+제안: N 개의 commit 으로 분할 권장
+
+[1] feat(scope): ...
+파일:
+  - path/to/file1
+  - path/to/file2
+이유: 한 줄
+
+[2] fix(scope): ...
+파일:
+  - path/to/file3
+이유: 한 줄
+
+... (필요 시 더)
+
+규칙:
+- 각 commit 은 1줄 요약 + 영향 파일 목록 + 한 줄 이유로만 구성.
+- 코드블록 / 마크다운 헤더 사용 금지.
+- 마지막에 "다음 단계:" 섹션에서 사용자에게 git reset → 파일별 git add 절차를 안내.
 
 git diff:
-${limited}
+${opts.diff}
 `;
 }

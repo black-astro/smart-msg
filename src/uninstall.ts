@@ -11,7 +11,9 @@ import {
   getConfigDir,
 } from "./config.js";
 
-// `sm logout` — 키만 제거한다. hook 추적 정보는 보존하여 이후 uninstall 이 hook 을 정리할 수 있게 한다.
+// `sm logout` — API 키만 제거하고 나머지 설정(언어/강도/톤/hook/폴백 등)은 전부 보존한다.
+// 과거에는 명시 필드만 saveConfig 에 다시 적었기에 onFailure/tone/globalHookInstalled 등이
+// 사일런트하게 사라지는 사고가 있어, 모든 키 필드만 명시적으로 비우는 방식으로 전환한다.
 export async function runLogout(): Promise<void> {
   const cfg = await loadConfig();
   if (!cfg) {
@@ -19,14 +21,13 @@ export async function runLogout(): Promise<void> {
     return;
   }
 
-  // hook 정보, 언어, 강도는 보존하고 인증 관련 필드만 제거한 후 다시 저장한다.
-  await saveConfig({
-    provider: cfg.provider,
-    model: cfg.model,
-    language: cfg.language,
-    strength: cfg.strength,
-    installedHooks: cfg.installedHooks,
-  });
+  const next = { ...cfg };
+  delete next.geminiApiKey;
+  delete next.groqApiKey;
+  delete next.openaiApiKey;
+  delete next.claudeApiKey;
+
+  await saveConfig(next);
 
   console.log("로그아웃이 완료되었습니다. 저장된 API 키가 제거되었습니다.");
   console.log("다시 사용하려면 `sm login` 을 실행합니다.");

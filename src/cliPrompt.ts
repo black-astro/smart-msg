@@ -37,3 +37,49 @@ export async function askYesNo(
     console.log(m.askYesNoInvalid);
   }
 }
+
+// 한 글자 키 + Enter 로 다중 선택을 받는다.
+// 예: askChoice("진행", [{key:"y",label:"commit"},{key:"r",label:"재생성"},...], "y")
+//   - 빈 입력 → defaultKey (있으면)
+//   - 등록된 key 와 일치 (case-insensitive) → 그 key 반환
+//   - 그 외 → 안내 후 재질문
+//   - Ctrl+C → null
+export interface Choice {
+  key: string;
+  label: string;
+}
+
+export async function askChoice(
+  message: string,
+  choices: Choice[],
+  defaultKey: string | undefined,
+  lang: Language = "en",
+): Promise<string | null> {
+  const m = t(lang);
+  const keys = choices.map((c) => c.key.toLowerCase());
+  const hint = choices
+    .map((c) =>
+      defaultKey && c.key.toLowerCase() === defaultKey.toLowerCase()
+        ? c.key.toUpperCase()
+        : c.key.toLowerCase(),
+    )
+    .join("/");
+  const labels = choices.map((c) => `  ${c.key}: ${c.label}`).join("\n");
+
+  while (true) {
+    console.log(labels);
+    const { answer } = await prompts({
+      type: "text",
+      name: "answer",
+      message: `${message} [${hint}]`,
+    });
+
+    if (answer === undefined) return null;
+    const normalized = String(answer).trim().toLowerCase();
+
+    if (normalized === "" && defaultKey) return defaultKey.toLowerCase();
+    if (keys.includes(normalized)) return normalized;
+
+    console.log(m.askChoiceInvalid(keys.join("/")));
+  }
+}

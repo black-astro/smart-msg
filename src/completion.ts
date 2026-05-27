@@ -19,6 +19,9 @@ const SUB_COMMANDS = [
   "update",
   "commit",
   "c",
+  "pr",
+  "amend",
+  "split",
   "completion",
   "help",
 ];
@@ -53,6 +56,9 @@ function zshScript(): string {
     ["update", "smart-msg 를 npm registry 최신 버전으로 업데이트"],
     ["commit", "staged diff 로 메시지 생성 후 커밋"],
     ["c", "commit 의 alias"],
+    ["pr", "현재 브랜치의 base..HEAD 변경으로 PR 본문 생성"],
+    ["amend", "마지막 commit 메시지를 AI 로 재생성하여 amend"],
+    ["split", "큰 staged diff 의 분할 commit 안내"],
     ["completion", "셸 자동완성 스크립트 출력"],
     ["help", "도움말"],
   ]

@@ -1,0 +1,61 @@
+name: Publish to npm
+
+# v* 형식의 git tag 가 push 되면 자동으로 npm 에 publish.
+# 사전 준비:
+#   1) https://www.npmjs.com/settings/<user>/tokens 에서 "Automation" 타입 토큰 발급
+#   2) GitHub repo > Settings > Secrets and variables > Actions > New repository secret
+#      Name: NPM_TOKEN
+#      Value: 발급된 npm 토큰
+#
+# 사용:
+#   npm version minor    # package.json + tag (예: v1.2.0) 생성
+#   git push --follow-tags
+#   ↑ tag push 가 본 workflow 를 트리거하여 npm publish 가 자동 실행됨.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript build
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
+      - name: Verify tag matches package.json
+        # 잘못된 tag (예: v1.2.0 인데 package.json 은 1.1.0) 로 publish 하는 사고 방지.
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::package.json version ($PKG_VERSION) does not match tag ($TAG_VERSION)"
+            exit 1
+          fi
+          echo "Version match: $PKG_VERSION"
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

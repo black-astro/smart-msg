@@ -14,11 +14,13 @@
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepare": "tsc",
     "postversion": "git push --follow-tags",
-    "release:patch": "npm version patch && npm publish",
-    "release:minor": "npm version minor && npm publish",
-    "release:major": "npm version major && npm publish"
+    "release:patch": "npm version patch",
+    "release:minor": "npm version minor",
+    "release:major": "npm version major"
   },
   "keywords": [
     "git",
@@ -33,7 +35,6 @@
   "license": "ISC",
   "dependencies": {
     "commander": "^14.0.3",
-    "dotenv": "^17.4.2",
     "execa": "^9.6.1",
     "open": "^11.0.0",
     "openai": "^6.34.0",
@@ -43,6 +44,7 @@
     "@types/node": "^25.6.0",
     "@types/prompts": "^2.4.9",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.4"
   }
 }

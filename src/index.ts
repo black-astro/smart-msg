@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 // CLI 진입점. npm install -g 로 설치 시 `sm` 명령을 어디에서나 호출 가능.
+//
+// 설정/키는 모두 ~/.smart-msg/config.json 에서 읽으므로 dotenv 의 cwd 의존 자동 로드는 의도적으로 사용하지 않는다.
+// (사용자 프로젝트의 무관한 .env 가 의도치 않게 환경에 끼어드는 사고를 막기 위함.)
 
-import "dotenv/config";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { Command } from "commander";
-import prompts from "prompts";
-import { getStagedDiff, commit } from "./git.js";
-import { generateCommitMessage } from "./ai.js";
 import { runLogin } from "./login.js";
 import { runLogout, runUninstall } from "./uninstall.js";
 import { runInstallHook, runHookHandler } from "./installHook.js";
@@ -17,7 +16,10 @@ import { runCompletion } from "./completion.js";
 import { runUpdate } from "./update.js";
 import { fetchLatestVersion, compareSemver } from "./version.js";
 import { loadConfig, getConfigPath } from "./config.js";
-import { askYesNo } from "./cliPrompt.js";
+import { runCommit } from "./commands/commit.js";
+import { runPr } from "./commands/pr.js";
+import { runAmend } from "./commands/amend.js";
+import { runSplit } from "./commands/split.js";
 
 // `sm --version` 출력값을 package.json 의 version 과 자동 동기화한다.
 // 과거 .version("0.1.0") 처럼 하드코딩하면 npm version 으로 버전을 올려도 CLI 출력이 안 바뀌어
@@ -51,7 +53,7 @@ program
 // `sm config` — 설치 이후 언어, 강도, 모델을 변경한다. 키는 변경하지 않는다.
 program
   .command("config")
-  .description("출력 언어, 메시지 강도, 모델을 변경합니다.")
+  .description("출력 언어, 메시지 강도, 모델, 톤, 폴백 등 모든 설정을 변경합니다.")
   .action(runConfig);
 
 // `sm uninstall` — 설정 및 hook 을 모두 제거한다. 패키지 본체 제거 안내까지 포함한다.
@@ -100,6 +102,12 @@ program
       console.log(`model    : ${cfg.model}`);
       console.log(`language : ${cfg.language ?? "(not set)"}`);
       console.log(`strength : ${cfg.strength ?? "(not set)"}`);
+      console.log(`tone     : ${cfg.tone ?? "report"}`);
+      console.log(`gitmoji  : ${cfg.gitmoji ? "on" : "off"}`);
+      console.log(`autoIssue: ${cfg.autoIssue ? "on" : "off"}`);
+      console.log(`fallback : ${cfg.fallbackProvider ?? "(none)"}`);
+      console.log(`onFail   : ${cfg.onFailure ?? "fallback"}`);
+      console.log(`verbose  : ${cfg.verbose ? "on" : "off"}`);
       console.log(`config   : ${getConfigPath()}`);
     } else {
       console.log("Not logged in. Run `sm login` to set up.");
@@ -130,42 +138,63 @@ program
 program
   .command("commit")
   .alias("c")
+  .option("--dry-run", "메시지만 출력하고 commit 은 실행하지 않습니다.")
   .description("staged diff 에서 커밋 메시지를 생성하고 커밋을 수행합니다.")
-  .action(async () => {
-    // 1) staged 된 diff 를 가져온다. git add 가 수행되지 않았다면 빈 문자열을 반환한다.
-    const diff = await getStagedDiff();
-
-    if (!diff.trim()) {
-      console.log("스테이지된 변경사항이 없습니다. 먼저 git add 를 실행하시기 바랍니다.");
-      process.exit(1);
-    }
-
-    // 2) AI 를 호출한다. 로그인이 되어있지 않은 경우 ai.ts 에서 안내 에러를 던진다.
-    let message: string;
-    try {
-      message = await generateCommitMessage(diff);
-    } catch (e) {
-      console.error((e as Error).message);
-      process.exit(1);
-    }
-
-    console.log("\n생성된 커밋 메시지:");
-    console.log(message);
-
-    // 3) 바로 커밋하지 않고 사용자에게 한 번 더 확인한다.
-    //    엔터를 명시적으로 눌러야만 진행 (askYesNo). 빈 입력 = 기본값 Y.
-    //    prompts 의 confirm 타입은 키 한 글자에 즉시 진행되어 잘못 누른 키로 commit 되는 사고가 가능했음.
-    const cfg = await loadConfig();
-    const lang = cfg?.language ?? "en";
-    const ok = await askYesNo("이 메시지로 커밋을 진행하시겠습니까?", true, lang);
-
-    if (ok !== true) {
-      console.log(lang === "ko" ? "취소되었습니다." : "Cancelled.");
-      return;
-    }
-
-    // 4) 확인된 경우 실제 git commit 을 실행한다.
-    await commit(message);
+  .action(async (opts: { dryRun?: boolean }) => {
+    await runCommit({ dryRun: opts.dryRun === true });
   });
 
-program.parse();
+// `sm pr` — base..HEAD 의 변경을 분석하여 PR 본문 (Summary + Test plan) 을 생성한다.
+program
+  .command("pr")
+  .option("--base <ref>", "비교 base ref 를 지정합니다. 미지정 시 origin/main 등 자동 탐지.")
+  .description("현재 브랜치의 base..HEAD 변경으로 PR 본문 초안을 생성합니다.")
+  .action(async (opts: { base?: string }) => {
+    await runPr({ base: opts.base });
+  });
+
+// `sm amend` — 마지막 commit 의 메시지만 다시 생성하여 amend.
+program
+  .command("amend")
+  .description("마지막 commit 의 메시지를 다시 생성하여 git commit --amend 합니다.")
+  .action(async () => {
+    await runAmend();
+  });
+
+// `sm split` — 큰 staged diff 를 의미 단위 commit 들로 어떻게 나눌지 AI 가 제안한다.
+program
+  .command("split")
+  .description("staged diff 를 의미 단위 commit 들로 분할하는 방법을 AI 가 제안합니다.")
+  .action(async () => {
+    await runSplit();
+  });
+
+// 인자 없이 sm 만 실행한 경우 — 로그인 안내 + 빠른 시작 가이드. commander 기본 도움말보다 친절.
+if (process.argv.length <= 2) {
+  void (async () => {
+    const cfg = await loadConfig();
+    console.log(`sm (smart-msg) v${pkg.version} — AI git commit message generator`);
+    console.log("");
+    if (!cfg) {
+      console.log("아직 로그인되지 않았습니다. 다음 명령으로 시작하세요:");
+      console.log("  sm login");
+      console.log("");
+      console.log("자세한 도움말: sm --help");
+    } else {
+      console.log(`provider : ${cfg.provider}  /  model: ${cfg.model}`);
+      console.log("");
+      console.log("자주 쓰는 명령:");
+      console.log("  sm c        # staged diff 로 메시지 생성 + commit");
+      console.log("  sm pr       # 현재 브랜치 변경으로 PR 본문 생성");
+      console.log("  sm amend    # 마지막 commit 메시지 재생성");
+      console.log("  sm split    # 큰 staged diff 분할 제안");
+      console.log("  sm config   # 설정 변경");
+      console.log("  sm status   # 현재 설정 + 버전 확인");
+      console.log("");
+      console.log("전체 명령 목록: sm --help");
+    }
+    process.exit(0);
+  })();
+} else {
+  program.parse();
+}

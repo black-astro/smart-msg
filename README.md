@@ -5,15 +5,16 @@
 **AI 기반 Git 커밋 메시지 자동 생성 도구**
 
 staged 된 git diff 를 분석하여 Conventional Commit 형식의 메시지를 자동으로 생성합니다.<br>
-Google Gemini, Groq (Llama), OpenAI, Anthropic Claude 를 지원하며, 한국어와 영어 출력을 모두 제공합니다.
+Google Gemini, Groq (Llama), OpenAI, Anthropic Claude, Ollama (로컬) 를 지원하며, 한국어와 영어 출력을 모두 제공합니다.
 
 <br>
 
-[![version](https://img.shields.io/badge/version-1.1.53-555555?style=flat-square)](https://www.npmjs.com/package/smart-msg)
+[![version](https://img.shields.io/badge/version-1.2.0-555555?style=flat-square)](https://www.npmjs.com/package/smart-msg)
 [![license](https://img.shields.io/badge/license-ISC-555555?style=flat-square)](#license)
 [![node](https://img.shields.io/badge/node-%3E%3D18-555555?style=flat-square)](https://nodejs.org)
 [![Groq](https://img.shields.io/badge/Groq-free%20tier-F55036?style=flat-square)](https://console.groq.com)
 [![Gemini](https://img.shields.io/badge/Gemini-free%20tier-34A853?style=flat-square)](https://aistudio.google.com)
+[![Ollama](https://img.shields.io/badge/Ollama-local-000000?style=flat-square)](https://ollama.com)
 [![OpenAI](https://img.shields.io/badge/OpenAI-supported-black?style=flat-square)](https://platform.openai.com)
 [![Claude](https://img.shields.io/badge/Claude-supported-black?style=flat-square)](https://www.anthropic.com)
 
@@ -75,10 +76,10 @@ sm login
 |  단계  | 항목                  | 선택지                                                |
 | :--: | ------------------- | -------------------------------------------------- |
 |  1   | **언어 (Language)**   | **English (기본)** / 한국어 — 이후 모든 prompt 가 선택 언어로 진행 |
-|  2   | AI provider         | **Google Gemini (무료, 기본)** / OpenAI / Anthropic Claude |
+|  2   | AI provider         | **Google Gemini (무료, 기본)** / Groq / OpenAI / Claude / Ollama (로컬) |
 |  3   | 모델                  | provider 별 권장 모델 목록                                  |
 |  4   | 메시지 강도              | simple / middle / hard                             |
-|  5   | API 키               | 자동으로 열린 발급 페이지에서 발급 후 입력                            |
+|  5   | API 키               | 자동으로 열린 발급 페이지에서 발급 후 입력 (Ollama 는 키 불필요)            |
 |  6   | 글로벌 hook 설치 여부      | **Yes** 권장 (모든 git 저장소에서 자동)                       |
 
 > [!NOTE]
@@ -99,14 +100,30 @@ sm login
 | ----------------------- | ----------------- | ------------------------------------------------- | ---------------------------------- |
 | **Groq (Llama)** ⭐      | 무료 티어 제공          | [Groq Console](https://console.groq.com/keys) (카드 등록 불필요) | **무료 사용 권장** — 자체 LPU 인프라로 503 거의 없음 + 매우 빠름 |
 | Google Gemini           | 무료 티어 제공          | [Google AI Studio](https://aistudio.google.com/app/apikey) (카드 등록 불필요) | 무료 티어 트래픽이 몰리면 503 자주 발생할 수 있음     |
+| **Ollama (로컬)** 🔒      | 완전 무료 (로컬)        | 키 불필요                                            | 인터넷 단절 / 회사 보안 환경 — 코드가 외부로 나가지 않음 |
 | OpenAI (GPT)            | 사용량만큼 과금 (유료)     | [OpenAI Platform](https://platform.openai.com/api-keys) (카드 등록 필수)    | OpenAI 생태계를 이미 사용 중인 경우            |
 | Anthropic Claude        | 사용량만큼 과금 (유료)     | [Anthropic Console](https://console.anthropic.com/settings/keys) (카드 등록 필수) | Claude 의 메시지 품질을 선호하는 경우           |
 
 > [!IMPORTANT]
-> **ChatGPT Plus / Claude Max 등 구독 결제로는 API 호출이 동작하지 않습니다.** 구독 상품과 개발자 API 는 결제 시스템이 분리되어 있으며, OpenAI / Claude 를 사용하시려면 콘솔에서 별도로 카드 등록 또는 크레딧 충전이 필요합니다. **무료로 사용하시려면 Groq 또는 Google Gemini 를 선택하시기 바랍니다.**
+> **ChatGPT Plus / Claude Max 등 구독 결제로는 API 호출이 동작하지 않습니다.** 구독 상품과 개발자 API 는 결제 시스템이 분리되어 있으며, OpenAI / Claude 를 사용하시려면 콘솔에서 별도로 카드 등록 또는 크레딧 충전이 필요합니다. **무료로 사용하시려면 Groq, Google Gemini, 또는 Ollama 를 선택하시기 바랍니다.**
 
 > [!NOTE]
-> Gemini 무료 티어는 인기 많은 시간대에 503 (high demand) 응답이 자주 발생할 수 있습니다. 자동 재시도가 적용되어 있긴 하지만 빈도가 높다면 **Groq 으로 전환**을 권장합니다 (`sm login` 다시 실행). Groq 은 자체 LPU 인프라를 사용해 무료 티어에서도 503 빈도가 매우 낮고 응답 속도도 5~10배 빠릅니다.
+> Gemini 무료 티어는 인기 많은 시간대에 503 (high demand) 응답이 자주 발생할 수 있습니다. 자동 재시도가 적용되어 있긴 하지만 빈도가 높다면 **Groq 으로 전환**을 권장합니다 (`sm login` 다시 실행). 또는 `sm config` → `fallback` 에서 Groq 을 폴백으로 등록해두시면, Gemini 실패 시 자동으로 Groq 으로 전환합니다.
+
+### Ollama 사용 시
+
+Ollama 는 로컬에 LLM 을 실행하는 도구입니다. 코드가 외부 서버로 전송되지 않으므로 회사 보안 환경에 적합합니다.
+
+```bash
+# 1) Ollama 설치 (https://ollama.com)
+# 2) 모델 미리 받기
+ollama pull llama3.2
+
+# 3) smart-msg 등록
+sm login   # provider 선택에서 'Ollama' 선택, 모델은 llama3.2 입력
+```
+
+기본 endpoint 는 `http://localhost:11434` 이며, 원격 Ollama 서버를 사용하시려면 `sm config` → `baseUrl` 에서 변경할 수 있습니다.
 
 <br>
 
@@ -148,8 +165,19 @@ $ sm c
 생성된 커밋 메시지:
 feat(auth): add OAuth login flow
 
-? 이 메시지로 커밋을 진행하시겠습니까? › (Y/n)
+  y: 그대로 commit
+  r: 메시지 다시 생성
+  e: 에디터로 열어 수정 후 commit
+  n: 취소
+? 이 메시지로 커밋을 진행하시겠습니까? [Y/r/e/n]
 ```
+
+- `y` (또는 Enter) — 그대로 commit
+- `r` — AI 가 다시 메시지 생성 (최대 5회)
+- `e` — `$EDITOR` (또는 git core.editor) 로 메시지를 열어 수정 후 commit
+- `n` — 취소
+
+`sm c --dry-run` 을 사용하면 commit 없이 메시지만 생성하여 출력합니다.
 
 <br>
 
@@ -160,14 +188,40 @@ feat(auth): add OAuth login flow
 | 명령                          | 설명                                                  |
 | --------------------------- | --------------------------------------------------- |
 | `sm login`                  | 최초 설정 (언어, provider, 모델, 강도, 키, 글로벌 hook)            |
-| `sm c` <sub>(= `sm commit`)</sub> | staged diff 로 메시지를 생성하고 즉시 commit                    |
-| `sm config`                 | 언어, 강도, 모델 변경                                      |
+| `sm c` <sub>(= `sm commit`)</sub> | staged diff 로 메시지를 생성하고 즉시 commit (y/r/e/n 선택)   |
+| `sm c --dry-run`            | commit 없이 메시지만 생성하여 출력                              |
+| `sm pr [--base <ref>]`      | 현재 브랜치의 base..HEAD 변경으로 PR 본문 (Summary + Test plan) 생성 |
+| `sm amend`                  | 마지막 commit 의 메시지를 AI 로 재생성하여 amend                  |
+| `sm split`                  | 큰 staged diff 를 의미 단위 commit 들로 어떻게 나눌지 AI 가 제안   |
+| `sm config`                 | 언어, 강도, 모델, 톤, gitmoji, autoIssue, fallback, verbose, baseUrl 변경 |
 | `sm status`                 | 현재 저장된 설정 + 버전(현재/최신) 비교 출력                          |
 | `sm update`                 | npm registry 의 최신 버전으로 자체 업데이트                       |
-| `sm logout`                 | 저장된 API 키 제거                                       |
+| `sm logout`                 | 저장된 API 키 제거 (다른 설정/hook 정보는 보존)                   |
 | `sm uninstall`              | 모든 설정 및 hook 제거                                    |
 | `sm completion <shell>`     | 셸 자동완성 등록 스크립트 출력 (bash/zsh/powershell/clink)        |
 | `sm help [command]`         | 도움말 출력. 특정 명령을 인자로 주면 그 명령의 상세 도움말 (예: `sm help commit`) |
+
+### sm pr 활용
+
+```bash
+# 자동 base 탐지 (origin/main → main → master → develop 순)
+sm pr
+
+# 특정 base 지정
+sm pr --base origin/develop
+
+# gh CLI 와 파이프 연결로 바로 PR 생성
+sm pr | gh pr create --body-file -
+```
+
+### sm amend 활용
+
+```bash
+# 마지막 commit 메시지가 마음에 안 들 때 (push 전)
+sm amend
+# → 마지막 commit 의 diff 로 새 메시지를 AI 가 생성
+# → y/r/e/n 선택 후 git commit --amend
+```
 
 <br>
 
@@ -183,6 +237,7 @@ feat(auth): add OAuth login flow
 | Groq     | `llama-3.1-8b-instant`, `llama-3.3-70b-versatile`, `gemma2-9b-it`              |
 | OpenAI   | `gpt-4.1-nano`, `gpt-4o-mini`, `gpt-4.1-mini`                                  |
 | Claude   | `claude-haiku-4-5`, `claude-3-5-haiku-latest`                                  |
+| Ollama   | `llama3.2`, `qwen2.5-coder`, `mistral`, `phi3` (또는 직접 입력)                    |
 
 ### Language
 
@@ -258,6 +313,65 @@ feat(auth): add OAuth login flow
 > [!NOTE]
 > 신규 설치 + 기존 설치(미설정) 모두 `report` 톤이 기본 적용됩니다. commit 메시지는 짧은 기술 보고서 톤이 자연스럽다는 판단입니다. 정중체를 원하시면 `sm config` 에서 `polite` 로 전환하시기 바랍니다.
 
+### Gitmoji (이모지 prefix)
+
+`sm config` → `gitmoji` 를 `on` 으로 설정하면 commit type 앞에 이모지가 자동으로 붙습니다.
+
+```
+✨ feat(auth): add OAuth login flow
+🐛 fix(parser): handle empty input
+♻️ refactor(api): split endpoint by pageType
+```
+
+매핑: `feat → ✨`, `fix → 🐛`, `docs → 📝`, `refactor → ♻️`, `perf → ⚡️`, `test → ✅`, `chore → 🔧`, `build → 📦`, `style → 💄`
+
+### Auto Issue (브랜치명 → 이슈키 footer 자동 첨부)
+
+`sm config` → `autoIssue` 를 `on` 으로 설정하면 현재 브랜치명에서 이슈 키를 추출하여 commit 메시지 footer 에 `Refs:` 로 자동 첨부합니다.
+
+```bash
+git checkout -b feature/AUTH-123-oauth-login
+git add .
+sm c
+# →
+# feat(auth): add OAuth login flow
+#
+# - PKCE 기반 OAuth 콜백 처리 추가
+# ...
+#
+# Refs: AUTH-123
+```
+
+추출 패턴:
+- JIRA 류: `AUTH-123`, `PROJ-9999` 등 (대문자 prefix + 숫자)
+- GitHub 류: `#123`, `gh-123`, `issue-123`, `issue/123` 등
+
+### Fallback Provider
+
+`sm config` → `fallback` 에서 폴백 provider 를 등록하면, 메인 provider 가 실패 (503, timeout 등) 했을 때 자동으로 다른 provider 로 재시도합니다.
+
+```
+provider : gemini    ← 메인
+fallback : groq      ← Gemini 503 시 자동으로 Groq 호출
+```
+
+두 provider 의 키가 모두 `sm login` 으로 등록되어 있어야 동작합니다.
+
+### Verbose / 디버그
+
+문제 진단이 필요할 때 `sm config` → `verbose` 를 `on` 으로 설정하면 prompt 와 응답이 stderr 에 출력됩니다. 환경변수로도 활성화 가능합니다.
+
+```bash
+SM_DEBUG=1 sm c
+```
+
+### Diff 마스킹 (자동)
+
+`.env` 류의 secret, AWS/GitHub 토큰, PEM private key 등은 AI 에 보내기 전 자동으로 `[REDACTED]` 로 마스킹됩니다. 사용자가 실수로 secret 을 staged 한 경우의 1차 방어선입니다.
+
+> [!WARNING]
+> 마스킹은 완전한 보호 수단이 아닙니다. secret 파일은 `.gitignore` 처리하는 것이 우선입니다.
+
 ### On-failure (AI 호출 실패 시 동작)
 
 |  값        | 동작                                                           |
@@ -268,7 +382,14 @@ feat(auth): add OAuth login flow
 `sm config` → `on-failure` 메뉴에서 변경 가능.
 
 > [!NOTE]
-> Gemini 의 503 (high demand), 일시 네트워크 단절 등으로 AI 메시지 생성이 실패하는 경우가 있습니다. 자동 재시도(429/5xx 대상, 백오프 0.6초·1.2초, 단일 호출 30초 타임아웃) 가 1차 방어선이며, 그래도 실패한 경우 위 옵션이 적용됩니다.
+> Gemini 의 503 (high demand), 일시 네트워크 단절 등으로 AI 메시지 생성이 실패하는 경우가 있습니다. 자동 재시도(429/5xx 대상, 백오프 0.6초·1.2초, 단일 호출 30초 타임아웃) + 폴백 provider (등록 시) 가 1차 방어선이며, 그래도 실패한 경우 위 옵션이 적용됩니다.
+
+### Custom Base URL (Azure OpenAI / 원격 Ollama 등)
+
+`sm config` → `baseUrl` 에서 OpenAI 호환 endpoint 또는 원격 Ollama 서버의 URL 을 지정할 수 있습니다.
+
+- OpenAI: Azure OpenAI, OpenRouter, 자체 호스팅 vLLM 등에 사용 (`https://your-resource.openai.azure.com/...`)
+- Ollama: 원격 머신에서 실행 중인 Ollama (`http://192.168.1.10:11434`)
 
 ### 설정 변경
 
@@ -276,7 +397,7 @@ feat(auth): add OAuth login flow
 sm config
 ```
 
-메뉴에서 언어, 강도, 모델, tone, on-failure 중 하나를 선택하여 변경합니다. provider 자체를 바꾸려면 `sm login` 을 다시 실행합니다 (다른 provider 의 키는 보존됩니다).
+메뉴에서 변경할 항목을 선택합니다. provider 자체를 바꾸려면 `sm login` 을 다시 실행합니다 (다른 provider 의 키는 보존됩니다).
 
 <br>
 
@@ -310,14 +431,20 @@ provider : gemini
 model    : gemini-2.5-flash
 language : ko
 strength : middle
+tone     : report
+gitmoji  : off
+autoIssue: on
+fallback : groq
+onFail   : fallback
+verbose  : off
 config   : C:\Users\you\.smart-msg\config.json
-version  : 1.1.50 → latest 1.1.51  ⇣  run `sm update` to upgrade
+version  : 1.1.54 → latest 1.2.0  ⇣  run `sm update` to upgrade
 ```
 
 > [!NOTE]
 > 업데이트 후에도 기존 `~/.smart-msg/config.json` 의 설정과 API 키는 그대로 유지됩니다. 다시 로그인할 필요가 없습니다.
 >
-> 새로 추가된 provider (예: Gemini) 를 사용하려면 `sm login` 을 다시 실행하여 추가 키를 등록할 수 있습니다. 기존 키는 덮어쓰여지지 않습니다.
+> 새로 추가된 provider (예: Ollama) 를 사용하려면 `sm login` 을 다시 실행하여 추가 키를 등록할 수 있습니다. 기존 키는 덮어쓰여지지 않습니다.
 
 <br>
 
@@ -325,7 +452,7 @@ version  : 1.1.50 → latest 1.1.51  ⇣  run `sm update` to upgrade
 
 ## 자동완성
 
-`sm <TAB>` 입력 시 서브커맨드(`login`, `logout`, `commit` 등) 가 자동으로 완성되도록 셸별 등록 스크립트를 제공합니다.
+`sm <TAB>` 입력 시 서브커맨드(`login`, `logout`, `commit`, `pr`, `amend`, `split` 등) 가 자동으로 완성되도록 셸별 등록 스크립트를 제공합니다.
 
 ### bash
 
@@ -428,5 +555,5 @@ ISC
 <br>
 
 <div align="center">
-<sub>Built with TypeScript &nbsp;·&nbsp; Powered by Google Gemini, Groq, OpenAI &amp; Anthropic Claude</sub>
+<sub>Built with TypeScript &nbsp;·&nbsp; Powered by Google Gemini, Groq, OpenAI, Anthropic Claude &amp; Ollama</sub>
 </div>
