@@ -175,6 +175,15 @@ export interface Messages {
   revertCheckOff: string;
   configChangedRevertCheck: (v: string) => string;
 
+  // P4 — repo style learner.
+  styleLearning: (sample: number) => string;
+  styleLearned: (count: number, path: string) => string;
+  styleLearnFailed: (msg: string) => string;
+  styleNoCommits: string;
+  styleNotLearned: string;
+  styleShowHeader: (path: string, when: string) => string;
+  styleCleared: (path: string) => string;
+
   // sm amend.
   amendNoLastDiff: string;
   amendGeneratedHeader: string;
@@ -353,6 +362,14 @@ const en: Messages = {
   revertCheckOff: "off - skip revert detection",
   configChangedRevertCheck: (v) => `revertCheck changed to ${v}.`,
 
+  styleLearning: (sample) => `Analyzing last ${sample} commits...`,
+  styleLearned: (count, path) => `Learned style from ${count} commits. Saved to ${path}`,
+  styleLearnFailed: (msg) => `Failed to learn style: ${msg}`,
+  styleNoCommits: "No commits found to analyze. Run after at least a few commits exist.",
+  styleNotLearned: "No style learned yet for this repo. Run `sm style learn`.",
+  styleShowHeader: (path, when) => `Style file: ${path}\nAnalyzed at: ${when}`,
+  styleCleared: (path) => `Removed ${path}`,
+
   amendNoLastDiff: "No diff found for the last commit (root commit or merge). Aborted.",
   amendGeneratedHeader: "Generated commit message (for amend):",
   amendChoicePrompt: "Amend last commit with this message?",
@@ -526,6 +543,14 @@ const ko: Messages = {
   revertCheckOn:  "on  - 최근 commit 스캔하여 잠재 revert 시 경고 (기본)",
   revertCheckOff: "off - revert 감지 안 함",
   configChangedRevertCheck: (v) => `revertCheck 가 ${v} 로 변경되었습니다.`,
+
+  styleLearning: (sample) => `최근 ${sample} 개 commit 을 분석하는 중...`,
+  styleLearned: (count, path) => `${count} 개 commit 으로 스타일 학습 완료. 저장 위치: ${path}`,
+  styleLearnFailed: (msg) => `스타일 학습 실패: ${msg}`,
+  styleNoCommits: "분석할 commit 이 없습니다. commit 이 몇 개 쌓인 후 다시 실행하시기 바랍니다.",
+  styleNotLearned: "이 저장소의 스타일이 아직 학습되지 않았습니다. `sm style learn` 으로 학습하세요.",
+  styleShowHeader: (path, when) => `스타일 파일: ${path}\n분석 시각: ${when}`,
+  styleCleared: (path) => `삭제 완료: ${path}`,
 
   amendNoLastDiff: "마지막 commit 의 diff 가 비어있습니다 (root commit / merge). 중단합니다.",
   amendGeneratedHeader: "생성된 커밋 메시지 (amend 용):",

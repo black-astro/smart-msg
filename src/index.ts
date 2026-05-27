@@ -20,6 +20,11 @@ import { runCommit } from "./commands/commit.js";
 import { runPr } from "./commands/pr.js";
 import { runAmend } from "./commands/amend.js";
 import { runSplit } from "./commands/split.js";
+import {
+  runStyleClear,
+  runStyleLearn,
+  runStyleShow,
+} from "./commands/style.js";
 
 // `sm --version` 출력값을 package.json 의 version 과 자동 동기화한다.
 // 과거 .version("0.1.0") 처럼 하드코딩하면 npm version 으로 버전을 올려도 CLI 출력이 안 바뀌어
@@ -188,6 +193,34 @@ program
   .description("staged diff 를 의미 단위 commit 들로 분할하는 방법을 AI 가 제안합니다.")
   .action(async () => {
     await runSplit();
+  });
+
+// `sm style` — 저장소의 commit 메시지 스타일을 학습/조회/삭제.
+// 학습된 스타일은 `sm c` 가 다음 호출부터 prompt 에 자동 주입한다.
+const style = program
+  .command("style")
+  .description("저장소의 commit 메시지 스타일을 학습하여 향후 생성에 반영합니다.");
+
+style
+  .command("learn")
+  .option("--sample <n>", "분석할 commit 개수 (기본 200, 범위 10~2000)", (v) => parseInt(v, 10))
+  .description("git log 최근 N 개를 분석해 스타일을 저장합니다.")
+  .action(async (opts: { sample?: number }) => {
+    await runStyleLearn({ sample: opts.sample });
+  });
+
+style
+  .command("show")
+  .description("현재 저장된 스타일을 사람이 읽기 쉬운 형태로 출력합니다.")
+  .action(async () => {
+    await runStyleShow();
+  });
+
+style
+  .command("clear")
+  .description("저장된 스타일 파일을 제거합니다.")
+  .action(async () => {
+    await runStyleClear();
   });
 
 // 인자 없이 sm 만 실행한 경우 — 로그인 안내 + 빠른 시작 가이드. commander 기본 도움말보다 친절.

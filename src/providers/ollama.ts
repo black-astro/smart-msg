@@ -15,10 +15,10 @@ const DEFAULT_BASE_URL = "http://localhost:11434";
 export const ollamaProvider: CommitProvider = {
   name: "ollama",
 
-  async generate({ diff, model, language, strength, tone, gitmoji, branch, mode, baseUrl, verbose, intent }) {
+  async generate({ diff, model, language, strength, tone, gitmoji, branch, mode, baseUrl, verbose, intent, styleHint }) {
     const url = `${(baseUrl || DEFAULT_BASE_URL).replace(/\/$/, "")}/api/generate`;
 
-    const prompt = buildPrompt({ diff, language, strength, tone, gitmoji, branch, mode, intent });
+    const prompt = buildPrompt({ diff, language, strength, tone, gitmoji, branch, mode, intent, styleHint });
     if (verbose) console.error(`[sm verbose] ollama prompt:\n${prompt}\n---`);
 
     const body = JSON.stringify({
