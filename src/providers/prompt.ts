@@ -79,6 +79,11 @@ export interface PromptOptions {
   // PR 본문 / amend 처럼 commit 메시지가 아닌 다른 출력을 만들 때 모드를 바꾸기 위한 옵션.
   // 미설정 시 'commit'.
   mode?: "commit" | "pr" | "split";
+  // 사용자가 직접 입력한 "이번 변경의 의도/이유" 한 줄.
+  // diff 만으로는 잡히지 않는 "왜" 를 모델에 명시적으로 전달하여
+  // 본문의 동기(motivation) 부분을 정확히 작성하도록 가이드한다.
+  // 미설정/빈 문자열이면 의도 블록을 생략한다.
+  intent?: string;
 }
 
 export function buildPrompt({
@@ -89,6 +94,7 @@ export function buildPrompt({
   gitmoji = false,
   branch,
   mode = "commit",
+  intent,
 }: PromptOptions): string {
   const prepared = prepareDiff(diff, DIFF_LIMIT);
 
@@ -109,6 +115,8 @@ export function buildPrompt({
 
   const branchBlock = buildBranchBlock(branch);
 
+  const intentBlock = buildIntentBlock(intent, strength);
+
   const noticeBlock = buildNoticeBlock(prepared);
 
   return `너는 senior software engineer야.
@@ -120,12 +128,29 @@ export function buildPrompt({
 - 메시지 외 다른 텍스트(설명, 코드블록 표시 등) 절대 금지
 
 ${LANGUAGE_INSTRUCTIONS[language]}
-${toneBlock}${gitmojiBlock}${branchBlock}출력 형식:
+${toneBlock}${gitmojiBlock}${branchBlock}${intentBlock}출력 형식:
 ${STRENGTH_INSTRUCTIONS[strength]}
 ${noticeBlock}
 git diff:
 ${prepared.text}
 `;
+}
+
+// 사용자 의도(why)를 prompt 에 명시 주입.
+// strength 가 simple (한 줄) 이면 본문 자체가 없으므로 의도는 summary 에 녹여 쓰도록 지시한다.
+// middle/hard 면 본문의 "변경 동기" 영역을 사용자 표현으로 채우도록 지시.
+// 빈 문자열/공백만/undefined → 블록 자체를 생성하지 않음 (모델이 "(사용자 입력 없음)" 같은 표현을 본문에 그대로 적는 사고 방지).
+function buildIntentBlock(intent: string | undefined, strength: Strength): string {
+  if (!intent) return "";
+  const trimmed = intent.trim();
+  if (!trimmed) return "";
+  // 모델이 본문에 그대로 따옴표로 복사하지 않도록 명시. 또한 사용자가 적은 표현을 본문 "동기" 의 근거로 쓰되,
+  // 사실 검증은 diff 와 교차로 — 둘이 모순되면 diff 우선이라고 알려준다.
+  const guidance =
+    strength === "simple"
+      ? "- summary (한 줄) 에 사용자 의도를 자연스럽게 반영하되, 그대로 인용하지 마세요."
+      : "- 본문의 '변경 동기' / 첫 bullet 에 사용자 의도를 핵심 근거로 반영하세요.\n- 따옴표로 그대로 복사하지 말고 자연스러운 commit 본문 표현으로 풀어쓰세요.\n- 사용자 의도와 diff 가 모순될 경우 diff 의 실제 변경을 우선합니다 (의도는 보조 정보).";
+  return `\n사용자 의도 (이번 변경의 \"왜\"):\n- "${trimmed}"\n${guidance}\n`;
 }
 
 function buildBranchBlock(branch?: BranchContext): string {

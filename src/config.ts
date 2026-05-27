@@ -32,6 +32,13 @@ export type OnFailure = "fallback" | "abort";
 // 새로운 사용자 + 기존 사용자(미설정) 모두 'report' 로 동작.
 export type Tone = "report" | "polite";
 
+// `sm c` 가 메시지 생성 전에 "이번 변경의 의도/이유" 한 줄을 물어볼지 결정.
+//   ask    (기본): TTY 환경일 때만 묻고, 빈 입력 (그냥 Enter) 으로 스킵 가능. 의도가 있으면 prompt 에 포함.
+//   always       : TTY 환경에서 비어있지 않은 의도를 요구. 비어있으면 다시 묻는다. (강제 — 강한 자기 규율 모드)
+//   never        : 묻지 않음. --intent <text> 플래그나 SM_INTENT env 로 명시 입력했을 때만 사용.
+// non-TTY (hook, pipe, CI) 환경에서는 ask/always 라도 prompt 가 동작하지 않으므로 SM_INTENT env 만 참조한다.
+export type CaptureIntent = "ask" | "always" | "never";
+
 // config 파일에 저장되는 전체 형태. 키는 provider 별로 따로 들고 있음
 // → 사용자가 둘 다 로그인해두고 provider 만 바꿔서 쓸 수 있게.
 export interface Config {
@@ -75,6 +82,10 @@ export interface Config {
   // OpenAI 호환 endpoint 의 base URL (Azure OpenAI, vLLM, OpenRouter 등).
   // 미설정 시 OpenAI 기본 endpoint 사용.
   openaiBaseUrl?: string;
+
+  // `sm c` 의도 입력 모드. 미설정 시 'ask'.
+  // 자세한 의미는 위 CaptureIntent 정의 참조.
+  captureIntent?: CaptureIntent;
 }
 
 // 파일 경로는 한 곳에서만 계산. 다른 곳에서 직접 경로 만들지 않게 export.

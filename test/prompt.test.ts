@@ -62,4 +62,57 @@ describe("buildPrompt", () => {
     });
     expect(out).toContain("의미 단위로 나누면");
   });
+
+  it("omits intent block when intent is undefined / empty / whitespace", () => {
+    const base = {
+      diff: "x",
+      language: "en" as const,
+      strength: "middle" as const,
+      tone: "report" as const,
+    };
+    expect(buildPrompt({ ...base })).not.toContain("사용자 의도");
+    expect(buildPrompt({ ...base, intent: "" })).not.toContain("사용자 의도");
+    expect(buildPrompt({ ...base, intent: "   " })).not.toContain("사용자 의도");
+  });
+
+  it("includes intent block when a non-empty intent is provided", () => {
+    const out = buildPrompt({
+      diff: "x",
+      language: "ko",
+      strength: "middle",
+      tone: "report",
+      intent: "IE 에서 로그인 리다이렉트 루프 수정",
+    });
+    expect(out).toContain("사용자 의도");
+    expect(out).toContain("IE 에서 로그인 리다이렉트 루프 수정");
+    // middle/hard 에는 본문 동기 영역에 반영하라는 가이드가 포함되어야 한다.
+    expect(out).toContain("변경 동기");
+  });
+
+  it("uses summary-line guidance when strength=simple", () => {
+    const out = buildPrompt({
+      diff: "x",
+      language: "en",
+      strength: "simple",
+      tone: "report",
+      intent: "fixing login loop in IE",
+    });
+    expect(out).toContain("사용자 의도");
+    expect(out).toContain("summary (한 줄)");
+    // simple 일 때는 본문 변경 동기 가이드는 들어가면 안 됨 (본문 자체가 없음).
+    expect(out).not.toContain("'변경 동기'");
+  });
+
+  it("trims intent before embedding in the prompt", () => {
+    const out = buildPrompt({
+      diff: "x",
+      language: "en",
+      strength: "middle",
+      tone: "report",
+      intent: "   trim test   ",
+    });
+    // 큰따옴표로 둘러싸인 raw intent 가 trim 된 형태로 들어있어야 한다.
+    expect(out).toContain('"trim test"');
+    expect(out).not.toContain('"   trim test   "');
+  });
 });

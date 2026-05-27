@@ -22,6 +22,9 @@ export interface GenerateParams {
   baseUrl?: string;
   // verbose 출력 여부.
   verbose?: boolean;
+  // 사용자가 입력한 "이번 변경의 의도/이유" 한 줄. router → provider → buildPrompt 로 그대로 전달된다.
+  // 빈 문자열/undefined 면 의도 블록은 생성되지 않는다.
+  intent?: string;
 }
 
 export interface CommitProvider {

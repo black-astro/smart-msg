@@ -7,7 +7,7 @@ import { buildPrompt } from "./prompt.js";
 export const openaiProvider: CommitProvider = {
   name: "openai",
 
-  async generate({ diff, model, apiKey, language, strength, tone, gitmoji, branch, mode, baseUrl, verbose }) {
+  async generate({ diff, model, apiKey, language, strength, tone, gitmoji, branch, mode, baseUrl, verbose, intent }) {
     // 매번 새 client 만듦 — apiKey 가 호출마다 달라질 수 있고 (멀티 계정 등)
     // 어차피 한 번만 호출하니 성능 영향 없음.
     const client = new OpenAI({
@@ -15,7 +15,7 @@ export const openaiProvider: CommitProvider = {
       ...(baseUrl ? { baseURL: baseUrl } : {}),
     });
 
-    const prompt = buildPrompt({ diff, language, strength, tone, gitmoji, branch, mode });
+    const prompt = buildPrompt({ diff, language, strength, tone, gitmoji, branch, mode, intent });
     if (verbose) console.error(`[sm verbose] openai prompt:\n${prompt}\n---`);
 
     const response = await client.responses.create({

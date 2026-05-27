@@ -83,3 +83,32 @@ export async function askChoice(
     console.log(m.askChoiceInvalid(keys.join("/")));
   }
 }
+
+// 자유형 텍스트 한 줄을 받는다.
+//   - 빈 입력 + allowEmpty=true → 빈 문자열 반환 (스킵 의도)
+//   - 빈 입력 + allowEmpty=false → 안내 후 다시 묻기
+//   - Ctrl+C → null
+// 의도(intent) 입력같이 "비어도 OK" 인 경우 / "필수" 인 경우 양쪽을 한 헬퍼로 처리한다.
+export async function askText(
+  message: string,
+  opts: { allowEmpty?: boolean; placeholder?: string; emptyRetryMessage?: string } = {},
+): Promise<string | null> {
+  const allowEmpty = opts.allowEmpty !== false;
+  while (true) {
+    const { answer } = await prompts({
+      type: "text",
+      name: "answer",
+      message,
+      ...(opts.placeholder ? { initial: "", hint: opts.placeholder } : {}),
+    });
+
+    if (answer === undefined) return null;
+    const trimmed = String(answer).trim();
+    if (trimmed === "") {
+      if (allowEmpty) return "";
+      if (opts.emptyRetryMessage) console.log(opts.emptyRetryMessage);
+      continue;
+    }
+    return trimmed;
+  }
+}

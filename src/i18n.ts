@@ -130,6 +130,22 @@ export interface Messages {
   regenLimitReached: string;
   dryRunFinished: string;
 
+  // 의도(intent) 입력 단계.
+  intentAskHint: string;
+  intentAskPrompt: string;
+  intentAlwaysEmptyRetry: string;
+  intentAccepted: (text: string) => string;
+  intentSkippedHint: string;
+
+  // sm config 에서 captureIntent 변경.
+  configTargetCaptureIntent: string;
+  configCurrentCaptureIntent: (v: string) => string;
+  configChooseCaptureIntent: string;
+  captureIntentAsk: string;
+  captureIntentAlways: string;
+  captureIntentNever: string;
+  configChangedCaptureIntent: (v: string) => string;
+
   // sm amend.
   amendNoLastDiff: string;
   amendGeneratedHeader: string;
@@ -268,6 +284,20 @@ const en: Messages = {
   regenLimitReached: "Reached regeneration limit. Cancelled.",
   dryRunFinished: "(dry-run) Skipping git commit.",
 
+  intentAskHint: "(Optional) One line on WHY you're making this change. Empty to skip.",
+  intentAskPrompt: "Intent (why)",
+  intentAlwaysEmptyRetry: "Intent is required (captureIntent=always). Please type one line, or run with --no-intent to skip.",
+  intentAccepted: (text) => `Intent recorded: "${text}"`,
+  intentSkippedHint: "(no intent — generating from diff only)",
+
+  configTargetCaptureIntent: "captureIntent (ask 'why' before generating commit message)",
+  configCurrentCaptureIntent: (v) => `  intent   : ${v}`,
+  configChooseCaptureIntent: "When should `sm c` ask for the change intent?",
+  captureIntentAsk: "ask    - prompt every time, empty Enter to skip (default)",
+  captureIntentAlways: "always - require a non-empty intent (strong self-discipline mode)",
+  captureIntentNever: "never  - never prompt (use --intent or SM_INTENT env to provide)",
+  configChangedCaptureIntent: (v) => `captureIntent changed to ${v}.`,
+
   amendNoLastDiff: "No diff found for the last commit (root commit or merge). Aborted.",
   amendGeneratedHeader: "Generated commit message (for amend):",
   amendChoicePrompt: "Amend last commit with this message?",
@@ -401,6 +431,20 @@ const ko: Messages = {
   regenerating: "다시 생성하는 중...",
   regenLimitReached: "재생성 횟수 한도에 도달하여 취소되었습니다.",
   dryRunFinished: "(dry-run) git commit 은 실행하지 않습니다.",
+
+  intentAskHint: "(선택) 이번 변경을 \"왜\" 하시는지 한 줄로 적어주세요. 그냥 Enter 누르면 건너뜁니다.",
+  intentAskPrompt: "변경 의도 (왜)",
+  intentAlwaysEmptyRetry: "의도 입력이 필수입니다 (captureIntent=always). 한 줄 입력하시거나 --no-intent 옵션으로 실행하시기 바랍니다.",
+  intentAccepted: (text) => `의도 기록: "${text}"`,
+  intentSkippedHint: "(의도 없음 — diff 만으로 생성합니다)",
+
+  configTargetCaptureIntent: "captureIntent (커밋 전 \"왜\" 한 줄 입력 모드)",
+  configCurrentCaptureIntent: (v) => `  intent   : ${v}`,
+  configChooseCaptureIntent: "`sm c` 가 의도(왜) 를 언제 물을지 선택합니다.",
+  captureIntentAsk: "ask    - 매번 묻고, 빈 입력은 스킵 (기본)",
+  captureIntentAlways: "always - 비어있지 않은 의도 강제 입력 (강한 자기 규율 모드)",
+  captureIntentNever: "never  - 절대 묻지 않음 (--intent 또는 SM_INTENT env 만 사용)",
+  configChangedCaptureIntent: (v) => `captureIntent 가 ${v} 로 변경되었습니다.`,
 
   amendNoLastDiff: "마지막 commit 의 diff 가 비어있습니다 (root commit / merge). 중단합니다.",
   amendGeneratedHeader: "생성된 커밋 메시지 (amend 용):",
