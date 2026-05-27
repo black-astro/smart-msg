@@ -52,6 +52,12 @@ export type RiskCheck = "warn" | "on" | "off";
 // false-positive 가 발생할 수 있는 영역이라 기본은 비차단성 안내로 둔다.
 export type RevertCheck = "on" | "off";
 
+// diff 를 LLM 으로 보내기 전 PII 토큰화 모드.
+//   off       : 토큰화 안 함. (단, secret 마스킹은 항상 동작)
+//   standard  : 보편적 식별자 (email/JWT/UUID/IP/CC/phone/auth-URL) 토큰화. 기본.
+//   strict    : standard + 일반 URL / Bearer auth 까지.
+export type PrivacyMode = "off" | "standard" | "strict";
+
 // config 파일에 저장되는 전체 형태. 키는 provider 별로 따로 들고 있음
 // → 사용자가 둘 다 로그인해두고 provider 만 바꿔서 쓸 수 있게.
 export interface Config {
@@ -108,6 +114,10 @@ export interface Config {
   revertCheck?: RevertCheck;
   // 스캔할 commit 개수. 미설정 시 20.
   revertLookback?: number;
+
+  // PII 토큰화 모드. 미설정 시 'standard'.
+  // 자세한 의미는 위 PrivacyMode 정의 참조.
+  privacyMode?: PrivacyMode;
 }
 
 // 파일 경로는 한 곳에서만 계산. 다른 곳에서 직접 경로 만들지 않게 export.

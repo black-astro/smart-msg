@@ -12,6 +12,7 @@ import {
   type CaptureIntent,
   type RiskCheck,
   type RevertCheck,
+  type PrivacyMode,
 } from "./config.js";
 import { RECOMMENDED_MODELS } from "./providers/types.js";
 import { pickLanguage, pickStrength } from "./login.js";
@@ -42,6 +43,7 @@ export async function runConfig(): Promise<void> {
   console.log(m.configCurrentCaptureIntent(cfg.captureIntent ?? "ask"));
   console.log(m.configCurrentRiskCheck(cfg.riskCheck ?? "warn"));
   console.log(m.configCurrentRevertCheck(cfg.revertCheck ?? "on"));
+  console.log(m.configCurrentPrivacyMode(cfg.privacyMode ?? "standard"));
   console.log(m.configCurrentPath(getConfigPath()));
   console.log("");
 
@@ -62,6 +64,7 @@ export async function runConfig(): Promise<void> {
       { title: m.configTargetCaptureIntent, value: "captureIntent" },
       { title: m.configTargetRiskCheck, value: "riskCheck" },
       { title: m.configTargetRevertCheck, value: "revertCheck" },
+      { title: m.configTargetPrivacyMode, value: "privacyMode" },
       { title: m.configTargetBaseUrl, value: "baseUrl" },
       { title: m.configTargetCancel, value: "cancel" },
     ],
@@ -288,6 +291,25 @@ export async function runConfig(): Promise<void> {
     if (!v) return;
     await updateConfig({ revertCheck: v as RevertCheck });
     console.log(m.configChangedRevertCheck(v));
+    return;
+  }
+
+  if (target === "privacyMode") {
+    const current: PrivacyMode = cfg.privacyMode ?? "standard";
+    const { v } = await prompts({
+      type: "select",
+      name: "v",
+      message: m.configChoosePrivacyMode,
+      choices: [
+        { title: current === "off"      ? `${m.privacyModeOff}${m.currentMarker}`      : m.privacyModeOff,      value: "off"      },
+        { title: current === "standard" ? `${m.privacyModeStandard}${m.currentMarker}` : m.privacyModeStandard, value: "standard" },
+        { title: current === "strict"   ? `${m.privacyModeStrict}${m.currentMarker}`   : m.privacyModeStrict,   value: "strict"   },
+      ],
+      initial: current === "off" ? 0 : current === "strict" ? 2 : 1,
+    });
+    if (!v) return;
+    await updateConfig({ privacyMode: v as PrivacyMode });
+    console.log(m.configChangedPrivacyMode(v));
     return;
   }
 
