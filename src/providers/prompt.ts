@@ -84,6 +84,9 @@ export interface PromptOptions {
   // 본문의 동기(motivation) 부분을 정확히 작성하도록 가이드한다.
   // 미설정/빈 문자열이면 의도 블록을 생략한다.
   intent?: string;
+  // 학습된 repo style 의 사람-읽기 가능한 요약 (formatStyleForPrompt 출력).
+  // 있으면 prompt 에 별도 블록으로 주입한다.
+  styleHint?: string;
 }
 
 export function buildPrompt({
@@ -95,6 +98,7 @@ export function buildPrompt({
   branch,
   mode = "commit",
   intent,
+  styleHint,
 }: PromptOptions): string {
   const prepared = prepareDiff(diff, DIFF_LIMIT);
 
@@ -117,6 +121,8 @@ export function buildPrompt({
 
   const intentBlock = buildIntentBlock(intent, strength);
 
+  const styleBlock = buildStyleBlock(styleHint);
+
   const noticeBlock = buildNoticeBlock(prepared);
 
   return `너는 senior software engineer야.
@@ -128,7 +134,7 @@ export function buildPrompt({
 - 메시지 외 다른 텍스트(설명, 코드블록 표시 등) 절대 금지
 
 ${LANGUAGE_INSTRUCTIONS[language]}
-${toneBlock}${gitmojiBlock}${branchBlock}${intentBlock}출력 형식:
+${toneBlock}${gitmojiBlock}${branchBlock}${intentBlock}${styleBlock}출력 형식:
 ${STRENGTH_INSTRUCTIONS[strength]}
 ${noticeBlock}
 git diff:
@@ -151,6 +157,13 @@ function buildIntentBlock(intent: string | undefined, strength: Strength): strin
       ? "- summary (한 줄) 에 사용자 의도를 자연스럽게 반영하되, 그대로 인용하지 마세요."
       : "- 본문의 '변경 동기' / 첫 bullet 에 사용자 의도를 핵심 근거로 반영하세요.\n- 따옴표로 그대로 복사하지 말고 자연스러운 commit 본문 표현으로 풀어쓰세요.\n- 사용자 의도와 diff 가 모순될 경우 diff 의 실제 변경을 우선합니다 (의도는 보조 정보).";
   return `\n사용자 의도 (이번 변경의 \"왜\"):\n- "${trimmed}"\n${guidance}\n`;
+}
+
+// 학습된 repo style 블록.
+// styleHint 가 비어있거나 undefined 이면 블록 자체 생성 안 함.
+function buildStyleBlock(styleHint: string | undefined): string {
+  if (!styleHint) return "";
+  return `\n${styleHint}\n`;
 }
 
 function buildBranchBlock(branch?: BranchContext): string {

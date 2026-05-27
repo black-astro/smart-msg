@@ -9,6 +9,7 @@ import { geminiProvider } from "./providers/gemini.js";
 import { groqProvider } from "./providers/groq.js";
 import { ollamaProvider } from "./providers/ollama.js";
 import { getCurrentBranch, extractIssueKey } from "./git.js";
+import { deriveRepoKey, formatStyleForPrompt, loadStyle } from "./repoStyle.js";
 
 // provider 식별자 → 실제 구현체 매핑. 새 provider 추가 시 이 객체에 한 줄만 추가.
 const PROVIDERS: Record<Provider, CommitProvider> = {
@@ -50,8 +51,12 @@ export async function generateCommitMessage(
   // 의도는 commit 모드일 때만 의미가 있음 (pr/split 은 본문 구조가 달라 별도 시스템).
   const intent = mode === "commit" ? normalizeIntent(opts.intent) : undefined;
 
+  // repo style 자동 주입 — commit 모드일 때만. 학습된 스타일 파일이 있으면 prompt 에 추가 블록으로.
+  // 실패는 silent — 스타일 없이도 생성은 정상 진행.
+  const styleHint = mode === "commit" ? await loadStyleHint(verbose) : undefined;
+
   try {
-    const primary = await callProvider(config, config.provider, diff, branch, mode, verbose, intent);
+    const primary = await callProvider(config, config.provider, diff, branch, mode, verbose, intent, styleHint);
     return appendIssueFooter(primary, config, branch);
   } catch (e) {
     const primaryErr = e as Error;
@@ -59,7 +64,7 @@ export async function generateCommitMessage(
     if (fb && fb !== config.provider && hasKeyFor(config, fb)) {
       if (verbose) console.error(`[sm verbose] primary ${config.provider} failed (${primaryErr.message}); falling back to ${fb}`);
       try {
-        const fallbackOut = await callProvider(config, fb, diff, branch, mode, verbose, intent);
+        const fallbackOut = await callProvider(config, fb, diff, branch, mode, verbose, intent, styleHint);
         return appendIssueFooter(fallbackOut, config, branch);
       } catch (e2) {
         const secondErr = e2 as Error;
@@ -67,6 +72,19 @@ export async function generateCommitMessage(
       }
     }
     throw primaryErr;
+  }
+}
+
+async function loadStyleHint(verbose: boolean): Promise<string | undefined> {
+  try {
+    const key = await deriveRepoKey();
+    const style = await loadStyle(key);
+    if (!style || style.sampledCommits === 0) return undefined;
+    const hint = formatStyleForPrompt(style);
+    if (verbose) console.error(`[sm verbose] style hint loaded:\n${hint}\n---`);
+    return hint;
+  } catch {
+    return undefined;
   }
 }
 
@@ -88,6 +106,7 @@ async function callProvider(
   mode: "commit" | "pr" | "split",
   verbose: boolean,
   intent: string | undefined,
+  styleHint: string | undefined,
 ): Promise<string> {
   const provider = PROVIDERS[providerId];
   if (!provider) {
@@ -128,6 +147,7 @@ async function callProvider(
     baseUrl,
     verbose,
     intent,
+    styleHint,
   });
 }
 
