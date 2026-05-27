@@ -193,6 +193,16 @@ export interface Messages {
   privacyModeStrict: string;
   configChangedPrivacyMode: (v: string) => string;
 
+  // P7 — voice.
+  voiceNoOpenaiKey: string;
+  voiceFileNotFound: (path: string) => string;
+  voiceNoFfmpeg: string;
+  voiceRecording: (seconds: number) => string;
+  voiceRecordingDone: string;
+  voiceTranscribeFailed: (msg: string) => string;
+  voiceEmptyTranscript: string;
+  voiceTranscriptCaptured: (text: string) => string;
+
   // sm amend.
   amendNoLastDiff: string;
   amendGeneratedHeader: string;
@@ -392,6 +402,15 @@ const en: Messages = {
   privacyModeStrict:   "strict   - standard + all URLs + Bearer tokens",
   configChangedPrivacyMode: (v) => `privacyMode changed to ${v}.`,
 
+  voiceNoOpenaiKey: "OpenAI API key is required for voice transcription. Run `sm login` to register one (you can keep your primary provider).",
+  voiceFileNotFound: (p) => `Audio file not found: ${p}`,
+  voiceNoFfmpeg: "ffmpeg is not installed. Install ffmpeg or pass --file <pre-recorded-audio.wav>.",
+  voiceRecording: (s) => `Recording for ${s} second(s)... speak now.`,
+  voiceRecordingDone: "Recording finished. Transcribing...",
+  voiceTranscribeFailed: (msg) => `Transcription failed: ${msg}`,
+  voiceEmptyTranscript: "Empty transcript. Nothing to use as intent.",
+  voiceTranscriptCaptured: (text) => `Transcript: "${text}"`,
+
   amendNoLastDiff: "No diff found for the last commit (root commit or merge). Aborted.",
   amendGeneratedHeader: "Generated commit message (for amend):",
   amendChoicePrompt: "Amend last commit with this message?",
@@ -586,6 +605,15 @@ const ko: Messages = {
   privacyModeStandard: "standard - email/JWT/UUID/IP/CC/phone/auth-URL (기본)",
   privacyModeStrict:   "strict   - standard + 일반 URL + Bearer 토큰까지",
   configChangedPrivacyMode: (v) => `privacyMode 가 ${v} 로 변경되었습니다.`,
+
+  voiceNoOpenaiKey: "음성 전사는 OpenAI API 키가 필요합니다. `sm login` 으로 openai 키를 등록하시기 바랍니다 (메인 provider 는 그대로 두셔도 됩니다).",
+  voiceFileNotFound: (p) => `오디오 파일을 찾을 수 없습니다: ${p}`,
+  voiceNoFfmpeg: "ffmpeg 가 설치되어 있지 않습니다. ffmpeg 를 설치하시거나 --file <미리-녹음한-파일.wav> 옵션으로 전달하시기 바랍니다.",
+  voiceRecording: (s) => `${s} 초 동안 녹음합니다... 지금 말씀하세요.`,
+  voiceRecordingDone: "녹음 종료. 전사 중...",
+  voiceTranscribeFailed: (msg) => `전사 실패: ${msg}`,
+  voiceEmptyTranscript: "전사 결과가 비어있습니다. 의도로 사용할 내용이 없습니다.",
+  voiceTranscriptCaptured: (text) => `전사 결과: "${text}"`,
 
   amendNoLastDiff: "마지막 commit 의 diff 가 비어있습니다 (root commit / merge). 중단합니다.",
   amendGeneratedHeader: "생성된 커밋 메시지 (amend 용):",
