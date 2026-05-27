@@ -9,6 +9,7 @@ import {
   type OnFailure,
   type Tone,
   type Provider,
+  type CaptureIntent,
 } from "./config.js";
 import { RECOMMENDED_MODELS } from "./providers/types.js";
 import { pickLanguage, pickStrength } from "./login.js";
@@ -36,6 +37,7 @@ export async function runConfig(): Promise<void> {
   console.log(m.configCurrentAutoIssue(cfg.autoIssue ? "on" : "off"));
   console.log(m.configCurrentFallback(cfg.fallbackProvider ?? "(none)"));
   console.log(m.configCurrentVerbose(cfg.verbose ? "on" : "off"));
+  console.log(m.configCurrentCaptureIntent(cfg.captureIntent ?? "ask"));
   console.log(m.configCurrentPath(getConfigPath()));
   console.log("");
 
@@ -53,6 +55,7 @@ export async function runConfig(): Promise<void> {
       { title: m.configTargetFallback, value: "fallback" },
       { title: m.configTargetOnFailure, value: "onFailure" },
       { title: m.configTargetVerbose, value: "verbose" },
+      { title: m.configTargetCaptureIntent, value: "captureIntent" },
       { title: m.configTargetBaseUrl, value: "baseUrl" },
       { title: m.configTargetCancel, value: "cancel" },
     ],
@@ -223,6 +226,25 @@ export async function runConfig(): Promise<void> {
     const next = v === "" ? undefined : (v as Provider);
     await updateConfig({ fallbackProvider: next });
     console.log(m.configChangedFallback(next ?? "(none)"));
+    return;
+  }
+
+  if (target === "captureIntent") {
+    const current: CaptureIntent = cfg.captureIntent ?? "ask";
+    const { v } = await prompts({
+      type: "select",
+      name: "v",
+      message: m.configChooseCaptureIntent,
+      choices: [
+        { title: current === "ask"    ? `${m.captureIntentAsk}${m.currentMarker}`    : m.captureIntentAsk,    value: "ask"    },
+        { title: current === "always" ? `${m.captureIntentAlways}${m.currentMarker}` : m.captureIntentAlways, value: "always" },
+        { title: current === "never"  ? `${m.captureIntentNever}${m.currentMarker}`  : m.captureIntentNever,  value: "never"  },
+      ],
+      initial: current === "always" ? 1 : current === "never" ? 2 : 0,
+    });
+    if (!v) return;
+    await updateConfig({ captureIntent: v as CaptureIntent });
+    console.log(m.configChangedCaptureIntent(v));
     return;
   }
 

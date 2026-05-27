@@ -24,6 +24,10 @@ export interface GenerateOptions {
   mode?: "commit" | "pr" | "split";
   // 브랜치 컨텍스트 자동 수집 여부. 기본 true. PR 명령처럼 base 비교가 따로 있는 경우엔 호출자가 직접 제어.
   collectBranch?: boolean;
+  // 사용자가 직접 입력한 "이번 변경의 의도/이유" 한 줄.
+  // diff 만으로는 잡히지 않는 "왜" 를 보존하여 본문의 동기 부분을 정확히 작성하도록 한다.
+  // 빈 문자열/undefined 이면 의도 블록 생략. provider 까지 그대로 전달된다.
+  intent?: string;
 }
 
 export async function generateCommitMessage(
@@ -43,9 +47,11 @@ export async function generateCommitMessage(
   // 3) primary provider 시도. 실패 시 fallbackProvider 가 있고 키가 등록되어 있으면 한 번 더 시도.
   const verbose = config.verbose === true || process.env.SM_DEBUG === "1";
   const mode = opts.mode ?? "commit";
+  // 의도는 commit 모드일 때만 의미가 있음 (pr/split 은 본문 구조가 달라 별도 시스템).
+  const intent = mode === "commit" ? normalizeIntent(opts.intent) : undefined;
 
   try {
-    const primary = await callProvider(config, config.provider, diff, branch, mode, verbose);
+    const primary = await callProvider(config, config.provider, diff, branch, mode, verbose, intent);
     return appendIssueFooter(primary, config, branch);
   } catch (e) {
     const primaryErr = e as Error;
@@ -53,7 +59,7 @@ export async function generateCommitMessage(
     if (fb && fb !== config.provider && hasKeyFor(config, fb)) {
       if (verbose) console.error(`[sm verbose] primary ${config.provider} failed (${primaryErr.message}); falling back to ${fb}`);
       try {
-        const fallbackOut = await callProvider(config, fb, diff, branch, mode, verbose);
+        const fallbackOut = await callProvider(config, fb, diff, branch, mode, verbose, intent);
         return appendIssueFooter(fallbackOut, config, branch);
       } catch (e2) {
         const secondErr = e2 as Error;
@@ -64,6 +70,16 @@ export async function generateCommitMessage(
   }
 }
 
+// 빈 문자열/공백만 → undefined. 그 외엔 trim 한 값.
+// 길이 상한(200) 도 부여 — 사용자가 실수로 너무 긴 텍스트를 붙여 prompt 가 비대해지는 사고 방지.
+// 외부에서는 사용하지 않지만, 단위 테스트에서 동작을 검증하기 위해 export.
+export function normalizeIntent(raw: string | undefined): string | undefined {
+  if (raw === undefined) return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > 200 ? trimmed.slice(0, 200) : trimmed;
+}
+
 async function callProvider(
   config: Config,
   providerId: Provider,
@@ -71,6 +87,7 @@ async function callProvider(
   branch: BranchContext | undefined,
   mode: "commit" | "pr" | "split",
   verbose: boolean,
+  intent: string | undefined,
 ): Promise<string> {
   const provider = PROVIDERS[providerId];
   if (!provider) {
@@ -110,6 +127,7 @@ async function callProvider(
     mode,
     baseUrl,
     verbose,
+    intent,
   });
 }
 
