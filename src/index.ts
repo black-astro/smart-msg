@@ -110,6 +110,7 @@ program
       console.log(`verbose  : ${cfg.verbose ? "on" : "off"}`);
       console.log(`intent   : ${cfg.captureIntent ?? "ask"}`);
       console.log(`risk     : ${cfg.riskCheck ?? "warn"}`);
+      console.log(`revert   : ${cfg.revertCheck ?? "on"}`);
       console.log(`config   : ${getConfigPath()}`);
     } else {
       console.log("Not logged in. Run `sm login` to set up.");
@@ -148,8 +149,9 @@ program
   .option("--intent <text>", "이번 변경의 '왜' 를 한 줄로 명시 (인터랙티브 prompt 우회).")
   .option("--no-intent", "의도 입력 prompt 를 강제로 건너뜁니다 (captureIntent=always 우회).")
   .option("--skip-risk", "위험도 평가/confirm 단계를 건너뜁니다.")
+  .option("--skip-revert", "최근 commit 대비 revert 감지를 건너뜁니다.")
   .description("staged diff 에서 커밋 메시지를 생성하고 커밋을 수행합니다.")
-  .action(async (opts: { dryRun?: boolean; intent?: string | false; skipRisk?: boolean }) => {
+  .action(async (opts: { dryRun?: boolean; intent?: string | false; skipRisk?: boolean; skipRevert?: boolean }) => {
     // commander 는 --no-intent 가 켜진 경우 opts.intent 를 false 로 설정한다.
     // typeof === "string" 인 경우에만 사용자가 텍스트를 명시한 것으로 간주한다.
     const intent = typeof opts.intent === "string" ? opts.intent : undefined;
@@ -159,6 +161,7 @@ program
       intent,
       noIntent,
       skipRisk: opts.skipRisk === true,
+      skipRevert: opts.skipRevert === true,
     });
   });
 
