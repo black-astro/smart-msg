@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractIssueKey } from "../src/git.js";
+import { extractIssueKey, parseNumstat } from "../src/git.js";
 
 describe("extractIssueKey", () => {
   it("extracts JIRA-style keys", () => {
@@ -24,5 +24,37 @@ describe("extractIssueKey", () => {
   it("ignores lowercased fake JIRA-like prefixes", () => {
     // 정규식이 대문자 prefix 만 허용. 'foo-123' 은 매치되지 않음.
     expect(extractIssueKey("feature/foo-123-x")).toBeNull();
+  });
+});
+
+describe("parseNumstat", () => {
+  it("parses text-only changes", () => {
+    const raw = "10\t5\tsrc/foo.ts\n0\t12\tREADME.md\n";
+    const out = parseNumstat(raw);
+    expect(out).toEqual([
+      { insertions: 10, deletions: 5, file: "src/foo.ts" },
+      { insertions: 0, deletions: 12, file: "README.md" },
+    ]);
+  });
+
+  it("treats binary files (`-`) as zero", () => {
+    const raw = "-\t-\tassets/logo.png\n5\t0\tsrc/x.ts\n";
+    const out = parseNumstat(raw);
+    expect(out).toEqual([
+      { insertions: 0, deletions: 0, file: "assets/logo.png" },
+      { insertions: 5, deletions: 0, file: "src/x.ts" },
+    ]);
+  });
+
+  it("returns empty array for empty input", () => {
+    expect(parseNumstat("")).toEqual([]);
+    expect(parseNumstat("\n\n")).toEqual([]);
+  });
+
+  it("skips malformed lines without crashing", () => {
+    const raw = "garbage line\n10\t5\tsrc/foo.ts\n";
+    expect(parseNumstat(raw)).toEqual([
+      { insertions: 10, deletions: 5, file: "src/foo.ts" },
+    ]);
   });
 });

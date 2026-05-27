@@ -146,6 +146,24 @@ export interface Messages {
   captureIntentNever: string;
   configChangedCaptureIntent: (v: string) => string;
 
+  // 위험도 평가 (P2).
+  riskHeader: string;
+  riskScoreLine: (bar: string) => string;
+  riskReasonLine: (reason: string) => string;
+  riskTimeWarning: (warnings: string) => string;
+  riskHighConfirm: string;
+  riskBlocked: string;
+  riskSkipped: string;
+
+  // sm config 에서 riskCheck 변경.
+  configTargetRiskCheck: string;
+  configCurrentRiskCheck: (v: string) => string;
+  configChooseRiskCheck: string;
+  riskCheckWarn: string;
+  riskCheckOn: string;
+  riskCheckOff: string;
+  configChangedRiskCheck: (v: string) => string;
+
   // sm amend.
   amendNoLastDiff: string;
   amendGeneratedHeader: string;
@@ -298,6 +316,22 @@ const en: Messages = {
   captureIntentNever: "never  - never prompt (use --intent or SM_INTENT env to provide)",
   configChangedCaptureIntent: (v) => `captureIntent changed to ${v}.`,
 
+  riskHeader: "Risk assessment:",
+  riskScoreLine: (bar) => `  score  : ${bar}`,
+  riskReasonLine: (reason) => `  - ${reason}`,
+  riskTimeWarning: (warnings) => `  time   : ⚠ dangerous time window (${warnings})`,
+  riskHighConfirm: "High-risk commit detected. Proceed anyway?",
+  riskBlocked: "Cancelled due to high-risk commit.",
+  riskSkipped: "(risk check skipped)",
+
+  configTargetRiskCheck: "riskCheck (assess change risk before committing)",
+  configCurrentRiskCheck: (v) => `  risk     : ${v}`,
+  configChooseRiskCheck: "How should `sm c` handle high-risk changes?",
+  riskCheckWarn: "warn - score 4+ only confirms during dangerous time window (default)",
+  riskCheckOn:   "on   - score 4+ always confirms",
+  riskCheckOff:  "off  - do not assess risk at all",
+  configChangedRiskCheck: (v) => `riskCheck changed to ${v}.`,
+
   amendNoLastDiff: "No diff found for the last commit (root commit or merge). Aborted.",
   amendGeneratedHeader: "Generated commit message (for amend):",
   amendChoicePrompt: "Amend last commit with this message?",
@@ -445,6 +479,22 @@ const ko: Messages = {
   captureIntentAlways: "always - 비어있지 않은 의도 강제 입력 (강한 자기 규율 모드)",
   captureIntentNever: "never  - 절대 묻지 않음 (--intent 또는 SM_INTENT env 만 사용)",
   configChangedCaptureIntent: (v) => `captureIntent 가 ${v} 로 변경되었습니다.`,
+
+  riskHeader: "위험도 평가:",
+  riskScoreLine: (bar) => `  점수    : ${bar}`,
+  riskReasonLine: (reason) => `  - ${reason}`,
+  riskTimeWarning: (warnings) => `  시간대  : ⚠ 위험 시간대 (${warnings})`,
+  riskHighConfirm: "고위험 변경입니다. 그래도 진행하시겠습니까?",
+  riskBlocked: "고위험 변경으로 인해 취소되었습니다.",
+  riskSkipped: "(위험도 평가 건너뜀)",
+
+  configTargetRiskCheck: "riskCheck (커밋 전 변경 위험도 평가)",
+  configCurrentRiskCheck: (v) => `  risk     : ${v}`,
+  configChooseRiskCheck: "`sm c` 가 고위험 변경을 어떻게 처리할지 선택합니다.",
+  riskCheckWarn: "warn - 점수 4 이상 + 위험 시간대일 때만 confirm (기본)",
+  riskCheckOn:   "on   - 점수 4 이상이면 항상 confirm",
+  riskCheckOff:  "off  - 평가 자체 수행 안 함",
+  configChangedRiskCheck: (v) => `riskCheck 가 ${v} 로 변경되었습니다.`,
 
   amendNoLastDiff: "마지막 commit 의 diff 가 비어있습니다 (root commit / merge). 중단합니다.",
   amendGeneratedHeader: "생성된 커밋 메시지 (amend 용):",
