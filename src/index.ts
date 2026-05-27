@@ -187,12 +187,14 @@ program
     await runAmend();
   });
 
-// `sm split` — 큰 staged diff 를 의미 단위 commit 들로 어떻게 나눌지 AI 가 제안한다.
+// `sm split` — 큰 staged diff 를 의미 단위 commit 들로 어떻게 나눌지 제안.
+// 로컬 휴리스틱 + AI 제안 두 가지 모두 출력. --no-ai 로 AI 제안 생략 가능.
 program
   .command("split")
-  .description("staged diff 를 의미 단위 commit 들로 분할하는 방법을 AI 가 제안합니다.")
-  .action(async () => {
-    await runSplit();
+  .option("--no-ai", "AI 제안을 생략하고 로컬 휴리스틱만 출력합니다.")
+  .description("staged diff 를 의미 단위 commit 들로 분할하는 방법을 제안합니다.")
+  .action(async (opts: { ai?: boolean }) => {
+    await runSplit({ noAi: opts.ai === false });
   });
 
 // `sm style` — 저장소의 commit 메시지 스타일을 학습/조회/삭제.
